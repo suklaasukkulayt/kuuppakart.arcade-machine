@@ -198,7 +198,7 @@ public class Tuomari : MonoBehaviour
 
         if (parasIkinAikaText != null)
         {
-            parasIkinAikaText.text = $"Best time: {FormatTime(currentBest)}";
+            parasIkinAikaText.text = $"<mark>Best time: {FormatTime(currentBest)}</mark>";
             SetBestTimeVisible(true);
         }
     }
