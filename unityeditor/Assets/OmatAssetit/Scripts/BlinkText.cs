@@ -3,10 +3,10 @@ using TMPro;
 
 public class BlinkText : MonoBehaviour
 {
-    public TMP_Text text;              // Raahaa Inspectorista TMP-tekstiobjekti
+    [Header("Blinking settings")]
+    public TMP_Text text;
     public string message = "Press any button to start";
-    public float interval = 1f;        // sekunteina
-
+    public float interval = 1f;
     private bool showing = false;
 
     void OnEnable()

@@ -66,5 +66,5 @@
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj"
     },
-    "dotnet.defaultSolution": "ajopeli.slnx"
+    "dotnet.defaultSolution": "unityeditor.slnx"
 }

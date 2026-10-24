@@ -1,59 +1,63 @@
 using UnityEngine;
-using TMPro; // Tarvitaan UI-tekstin päivittämiseen
+using TMPro;
 
 [RequireComponent(typeof(Rigidbody))]
 public class Player : MonoBehaviour
 {
-    [Header("Liikkuminen")]
+    [Header("Movement")]
     public float baseSpeed = 10f;
     public float turnSpeed = 130f;
 
-    [Header("Vaikeustaso")]
-    [Tooltip("Kuinka paljon pelaajan perusnopeutta kerrotaan Hard-tasolla (alle 1 = hitaampi).")]
+    [Header("Difficulty")]
     public float hardModeSpeedMultiplier = 0.9f;
 
-    [Header("Boost-asetukset")]
+    
+    [Header("Crashing")]
+    public float stunImpactThreshold = 6f;
+    public float stunDuration = 1.5f;
+    public float extraSpinTorque = 8f;
+    public float crashLaunchMultiplier = 1.5f;
+    public float crashUpwardMultiplier = 0.8f;
+    private RigidbodyConstraints normalConstraints;
+    private bool wasAutoCorrectorEnabled;
+
+    [Header("Boost settings")]
     public float boostSpeed = 15f;
     public float boostDuration = 1.5f;
     public float boostCooldown = 4.0f;
-    public TextMeshProUGUI uiText; // Raahaa BoostText tähän Inspectorissa
+    public TextMeshProUGUI uiText;
 
     private float currentSpeed;
     private float boostTimer = 0f;
     private float cooldownTimer = 0f;
     private bool isBoosted = false;
     private Rigidbody rb;
+    private bool isStunned = false;
+    private float stunTimer = 0f;
 
-    // Viittaus suoristus/teleport-skriptiin, jotta tiedetään milloin SE ohjaa autoa
-    // eikä pelaajan omaa ohjausta pidä ottaa huomioon samaan aikaan.
     private PlayerUprightAndShortcuts_AutoFallReset autoCorrector;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        normalConstraints = rb.constraints;
         autoCorrector = GetComponent<PlayerUprightAndShortcuts_AutoFallReset>();
 
-        // Vaikeustason vaikutus: Hard-tasolla pelaajan perusnopeus on hieman hitaampi.
-        // Jos DifficultyManageria ei löydy (esim. Game-sceneä testataan suoraan), käytetään Normalia.
         if (DifficultyManager.Instance != null && DifficultyManager.Instance.SelectedDifficulty == Difficulty.Hard)
         {
             baseSpeed *= hardModeSpeedMultiplier;
         }
 
-        // Asetetaan pelin alussa nopeudeksi normaali perusnopeus
         currentSpeed = baseSpeed;
     }
 
-    // Update: näppäinpainallukset, ajastimet ja UI -- ei fysiikkaa, joten pysyy täällä.
     void Update()
     {
-        // Jos peli ei ole käynnissä, ei tehdä mitään (alkuperäinen logiikka)
         if (GameManager.Instance.Phase != RacePhase.Racing)
         {
             return;
         }
 
-        // --- BOOST-LOGIIKKA ALKAA ---
         if (Input.GetKeyDown(KeyCode.B) && !isBoosted && cooldownTimer <= 0f)
         {
             isBoosted = true;
@@ -66,7 +70,6 @@ public class Player : MonoBehaviour
             boostTimer -= Time.deltaTime;
             if (boostTimer <= 0f)
             {
-                // Boost loppuu
                 isBoosted = false;
                 currentSpeed = baseSpeed;
                 cooldownTimer = boostCooldown;
@@ -81,44 +84,88 @@ public class Player : MonoBehaviour
         {
             if (isBoosted)
             {
-                uiText.text = "Boosted!";
+                uiText.text = "<mark>Boosted!</mark>";
             }
             else if (cooldownTimer > 0f)
             {
-                uiText.text = $"{cooldownTimer:F1}s to the next boost!";
+                uiText.text = $"<mark>{cooldownTimer:F1}s to the next boost!</mark>";
             }
             else
             {
-                uiText.text = "Boost ready!";
+                uiText.text = "<mark>Boost ready!</mark>";
             }
         }
-        // --- BOOST-LOGIIKKA LOPPUU ---
     }
 
-    // FixedUpdate: itse liikkuminen Rigidbodyn kautta (fysiikkamoottori näkee liikkeen,
-    // Continuous Collision Detection toimii, ei enää seinien läpimenoa boostilla).
-    void FixedUpdate()
+void OnCollisionEnter(Collision collision) {
+    float impactSpeed = collision.relativeVelocity.magnitude;
+
+    if (impactSpeed < stunImpactThreshold)
+        return;
+
+    if (!isStunned)
     {
-        if (GameManager.Instance.Phase != RacePhase.Racing)
-        {
-            return;
-        }
+        wasAutoCorrectorEnabled =
+            autoCorrector != null && autoCorrector.enabled;
 
-        // TÄRKEÄ KORJAUS: jos PlayerControlShortcuts_Rigidbody parhaillaan suoristaa
-        // autoa (kaatunut/ilmassa pyörinyt), ei anneta pelaajan oman ohjauksen kutsua
-        // rb.MoveRotation:ia SAMASSA FixedUpdatessa -- kaksi skriptiä joka yrittää
-        // asettaa saman Rigidbodyn rotaation joka framessa aiheuttaa juuri sen ongelman
-        // missä ohjaus "jumittuu" kunnes irrottaa napit. Korjauksen ajaksi ohjaus
-        // yksinkertaisesti pausetetaan, ja jatkuu heti kun auto on suoristunut.
-        if (autoCorrector != null && autoCorrector.IsAutoCorrecting)
-        {
-            return;
-        }
+        if (autoCorrector != null)
+            autoCorrector.enabled = false;
 
-        float move = Input.GetAxis("Vertical") * currentSpeed * Time.fixedDeltaTime;
-        float turn = Input.GetAxis("Horizontal") * turnSpeed * Time.fixedDeltaTime;
-
-        rb.MovePosition(rb.position + transform.forward * move);
-        rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turn, 0f));
+        rb.constraints = RigidbodyConstraints.None;
     }
+
+    isStunned = true;
+    stunTimer = stunDuration;
+
+    Vector3 launchDirection =
+        collision.relativeVelocity.sqrMagnitude > 0.01f
+        ? -collision.relativeVelocity.normalized
+        : transform.forward;
+
+    Vector3 launchForce =
+        launchDirection * impactSpeed * crashLaunchMultiplier
+        + Vector3.up * impactSpeed * crashUpwardMultiplier;
+
+    rb.AddForce(launchForce, ForceMode.Impulse);
+
+    rb.AddTorque(
+        Random.onUnitSphere * extraSpinTorque * impactSpeed,
+        ForceMode.Impulse
+    );
+}
+
+void FixedUpdate()
+{
+    if (GameManager.Instance.Phase != RacePhase.Racing)
+        return;
+
+    if (isStunned)
+    {
+        stunTimer -= Time.fixedDeltaTime;
+
+        if (stunTimer <= 0f)
+        {
+            isStunned = false;
+            rb.constraints = normalConstraints;
+
+            if (autoCorrector != null)
+                autoCorrector.enabled = wasAutoCorrectorEnabled;
+        }
+
+        return;
+    }
+
+    if (autoCorrector != null && autoCorrector.IsAutoCorrecting)
+        return;
+
+    float move =
+        Input.GetAxis("Vertical") * currentSpeed * Time.fixedDeltaTime;
+
+    float turn =
+        Input.GetAxis("Horizontal") * turnSpeed * Time.fixedDeltaTime;
+
+    rb.MovePosition(rb.position + transform.forward * move);
+    rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turn, 0f));
+}
+
 }

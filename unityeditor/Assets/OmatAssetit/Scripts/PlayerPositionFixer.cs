@@ -8,58 +8,38 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
     public Vector3 teleportPosition = new Vector3(13f, 0f, 47f);
 
     [Header("Auto-fall reset")]
-    [Tooltip("Jos pelaajan Y (korkeus) laskee alle tämän arvon, suoritetaan teleport samaan tapaan kuin T-näppäin.")]
     public float fallYThreshold = -5f;
 
     [Header("Tilt detection")]
-    [Tooltip("Kulma (asteina) jonka ylityttyä automaattinen korjaus käynnistyy.")]
     public float angleThreshold = 45f;
-    [Tooltip("Estää turhan herkästi laukeamisen; jos >0, vaaditaan myös tämä minimipyörimisnopeus NOPEALLE kaatumiselle.")]
     public float angularVelocityMin = 0.5f;
-    [Tooltip("Jos auto on kallellaan yli angleThresholdin tämän monta sekuntia yhtäjaksoisesti (esim. levossa katolla/kyljellä, pyörimisnopeus jo nollassa), korjaus käynnistyy silti tämän ajan jälkeen.")]
     public float stuckTimeThreshold = 1.5f;
-
-    [Tooltip("Kuinka kauan (s) korjauksen PÄÄTTYMISEN jälkeen odotetaan ennen kuin uusi korjaus voidaan käynnistää. Estää loputtoman jumituksen jos auto keikkuu juuri kynnysarvon rajalla (esim. reunalla) -- ilman tätä korjaus voisi käynnistyä välittömästi uudestaan eikä pelaaja saisi koskaan ohjausta takaisin.")]
     public float correctionRetriggerCooldown = 1.0f;
 
-    [Tooltip("Jos korjaus ei ole valmistunut (ei saavuttanut tavoitekulmaa) tämän monessa sekunnissa -- esim. auto on juuttunut kiinni geometriaan eikä pääse kääntymään loppuun -- korjaus luovuttaa ja antaa ohjauksen pakolla takaisin pelaajalle. Tämä on viimeinen varmistus ettei ohjaus jää KOSKAAN pysyvästi lukkoon.")]
-    public float maxCorrectionDuration = 2.5f;
+    public float maxCorrectionDuration = 2.0f;
 
     [Header("Smooth auto-correction")]
-    [Tooltip("Kuinka monta astetta per sekunti voidaan kääntyä automaattisessa korjauksessa. Suurempi = nopeampi korjaus.")]
     public float autoCorrectionDegreesPerSecond = 360f;
-    [Tooltip("Kun lopetetaan korjaus, jos etäisyys tavoitteeseen alle tämän verran asteina, korjaus päättyy.")]
     public float finishAngleEpsilon = 0.5f;
-    [Tooltip("Jos true, korjauksessa korjataan vain Y-aksele (yaw) — pelaajan pitch/roll nollataan.")]
     public bool correctOnlyYaw = true;
 
     [Header("Camera settings")]
-    [Tooltip("Käytetäänkö pääkameran vaakasuuntaa (yaw) pelaajan orientaation määrittelyyn R-komennossa ja automaatiossa.")]
     public bool useCameraYaw = true;
 
     Rigidbody rb;
     Camera mainCamera;
 
-    // Sisäiset tilat
     bool isAutoCorrecting = false;
     Quaternion autoTargetRotation = Quaternion.identity;
     float tiltTimer = 0f;
     float correctionCooldownTimer = 0f;
     float correctionElapsedTime = 0f;
-
-    // Julkinen lukutila muille skripteille (esim. Player.cs), jotta ne voivat väistää
-    // antamasta ohjauskomentoja silloin kun tämä skripti suoristaa autoa väkisin --
-    // muuten kaksi skriptiä kutsuvat rb.MoveRotation:ia samassa FixedUpdatessa ja
-    // "riitelevät" rotaatiosta, mikä lukitsee ohjauksen kunnes irrottaa napit.
     public bool IsAutoCorrecting => isAutoCorrecting;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
 
-        // Haetaan kamera ensisijaisesti omista lapsista (Playerin sisällä oleva "Camera"),
-        // koska se ei riipu MainCamera-tagista. Camera.main toimii vain, jos jokin AKTIIVINEN
-        // kamera on tagattu "MainCamera" -- tällä hetkellä se ei ole voimassa tässä scenessä.
         mainCamera = GetComponentInChildren<Camera>();
         if (mainCamera == null)
         {
@@ -79,16 +59,11 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
             correctionCooldownTimer -= Time.fixedDeltaTime;
         }
 
-        // Aloita automaattinen korjaus, jos kallistus on liian suuri JA jäähdytysaika
-        // edellisestä korjauksesta on jo kulunut umpeen -- tämä estää tilanteen jossa
-        // auto keikkuu tarkalleen kynnysarvon rajalla ja korjaus käynnistyisi uudestaan
-        // välittömästi joka kerta kun se juuri päättyi.
         if (!isAutoCorrecting && correctionCooldownTimer <= 0f && IsTiltedBeyondThreshold())
         {
             StartAutoCorrection();
         }
 
-        // Jos käynnissä, suorita pehmeä kääntyminen kohti targettia
         if (isAutoCorrecting)
         {
             PerformAutoCorrectionStep();
@@ -97,20 +72,16 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
 
     void Update()
     {
-        // R painallus -> käynnistä korjaus kameran suuntaan (tai fallback)
         if (Input.GetKeyDown(KeyCode.R))
         {
             StartAutoCorrection(GetLookDirectionRotation());
         }
 
-        // T painallus -> teleporttaa JA asettaa katseen täsmälleen Y=90°
         if (Input.GetKeyDown(KeyCode.T))
         {
             DoTeleportAsT();
         }
 
-        // Auto-fall reset: jos pelaajan y < threshold -> nostetaan takaisin samaan
-        // x/z-sijaintiin y=0:aan (EI takaisin alkuun, se on vain T-näppäimelle).
         if (transform.position.y < fallYThreshold)
         {
             DoFallSafetyTeleport();
@@ -119,8 +90,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
 
     void DoFallSafetyTeleport()
     {
-        // Pudonnut kartan/terrainin läpi: nostetaan takaisin SAMAAN x/z-sijaintiin,
-        // vain korkeus korjataan nollaan. Ei siis palauteta alkuun kuten T-näppäimessä.
         Vector3 current = rb.position;
         Vector3 fixedPos = new Vector3(current.x, 0f, current.z);
 
@@ -129,9 +98,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         rb.angularVelocity = Vector3.zero;
         tiltTimer = 0f;
 
-        // Suoristetaan auto ylös, mutta säilytetään nykyinen ajosuunta (yaw) sen sijaan
-        // että pakotettaisiin kiinteä 90° kuten T-pikanäppäimessä -- keskellä rataa
-        // yaw=90 osoittaisi usein väärään suuntaan.
         Vector3 flatForward = new Vector3(transform.forward.x, 0f, transform.forward.z);
         Quaternion uprightKeepHeading = flatForward.sqrMagnitude > 0.0001f
             ? Quaternion.LookRotation(flatForward.normalized, Vector3.up)
@@ -142,27 +108,19 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
 
     void DoTeleportAsT()
     {
-        // Teleport position fysiikan kautta
         rb.position = teleportPosition;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         tiltTimer = 0f;
 
-        // Target rotation: täsmälleen yaw = 90°
         Quaternion target90 = Quaternion.Euler(0f, 90f, 0f);
 
-        // Päivitä kameran yaw suoraan VAIN jos kamera EI ole Playerin lapsi.
-        // Jos se ON lapsi (kuten nyt), kamera seuraa Playerin rotaatiota automaattisesti
-        // alla olevan autokorjauksen kautta -- kameran world-rotaation pakottaminen tässä
-        // rikkoisi kameran paikallisen rotaation ja sotkisi esim. LookBackCameran tallentaman
-        // "eteenpäin"-asennon.
         if (mainCamera != null && !mainCamera.transform.IsChildOf(transform))
         {
             Vector3 camEuler = mainCamera.transform.eulerAngles;
             mainCamera.transform.rotation = Quaternion.Euler(camEuler.x, 90f, camEuler.z);
         }
 
-        // Käynnistä sulava korjaus kohti 90° yaw:ta
         StartAutoCorrection(target90);
     }
 
@@ -175,26 +133,20 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
             return false;
         }
 
-        // Nopea kaatuminen/lennossa pyöriminen: reagoi heti kun pyörimisnopeus riittää
         if (angularVelocityMin <= 0f || rb.angularVelocity.magnitude >= angularVelocityMin)
         {
             tiltTimer = 0f;
             return true;
         }
 
-        // Hidas/pysähtynyt tapaus: auto makaa kyljellään tai katolla paikallaan, eikä
-        // pyörimisnopeus enää ylitä angularVelocityMin-rajaa. Lasketaan aikaa ja
-        // käynnistetään korjaus joka tapauksessa stuckTimeThresholdin jälkeen.
         tiltTimer += Time.fixedDeltaTime;
         return tiltTimer >= stuckTimeThreshold;
     }
 
-    // Aloittaa automaattisen korjauksen; jos target ei annettu, käytetään kameran yaw:ia / forwardia
     void StartAutoCorrection(Quaternion? optionalTarget = null)
     {
         Quaternion target = optionalTarget ?? GetLookDirectionRotation();
 
-        // Jos correctOnlyYaw on true, tiivistetään target vain yaw:ksi
         if (correctOnlyYaw)
         {
             float yaw = target.eulerAngles.y;
@@ -206,7 +158,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         tiltTimer = 0f;
         correctionElapsedTime = 0f;
 
-        // Nollaa pyörimisnopeus niin ei rikkoudu slerp:illä
         rb.angularVelocity = Vector3.zero;
     }
 
@@ -214,10 +165,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
     {
         correctionElapsedTime += Time.fixedDeltaTime;
 
-        // Turvaverkko: jos korjaus ei ole valmistunut annetussa ajassa (esim. auto on
-        // fyysisesti juuttunut kiinni geometriaan eikä pääse kääntymään tavoitteeseen asti),
-        // luovutetaan ja pakotetaan ohjaus takaisin pelaajalle -- ohjaus EI SAA KOSKAAN
-        // jäädä pysyvästi lukkoon, vaikka täydellistä suoristusta ei saataisikaan aikaan.
         if (correctionElapsedTime >= maxCorrectionDuration)
         {
             rb.angularVelocity = Vector3.zero;
@@ -226,10 +173,8 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
             return;
         }
 
-        // Laske kulmaero
         float angleToTarget = Quaternion.Angle(rb.rotation, autoTargetRotation);
 
-        // Jos jo lähellä, tee lopetus
         if (angleToTarget <= finishAngleEpsilon)
         {
             rb.MoveRotation(autoTargetRotation);
@@ -239,20 +184,15 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
             return;
         }
 
-        // Laske kuinka monta astetta voimme kääntyä tässä FixedUpdateissä
         float maxDelta = autoCorrectionDegreesPerSecond * Time.fixedDeltaTime;
 
-        // Seuraava rotatiovaihe
         Quaternion next = Quaternion.RotateTowards(rb.rotation, autoTargetRotation, maxDelta);
 
-        // Siirrä rigidbodyn rotatioon fysiikan kautta
         rb.MoveRotation(next);
 
-        // Pidä angularVelocity nollassa korjauksen ajan
         rb.angularVelocity = Vector3.zero;
     }
 
-    // Palauttaa target rotationin: joko kameran yaw tai pelaajan forward suunta vaakatasossa
     Quaternion GetLookDirectionRotation()
     {
         if (useCameraYaw && mainCamera != null)
@@ -272,8 +212,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
             return rb.rotation;
         }
     }
-
-    // Debug-visualisointi editorissa
     void OnDrawGizmosSelected()
     {
         if (!Application.isPlaying) return;
@@ -285,7 +223,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
             Gizmos.DrawLine(transform.position, transform.position + autoTargetRotation * Vector3.forward * 2f);
         }
 
-        // Piirrä myös alaraja-linja (visuaalinen apu tasolle)
         Gizmos.color = Color.yellow;
         Vector3 from = new Vector3(transform.position.x - 2f, fallYThreshold, transform.position.z - 2f);
         Vector3 to   = new Vector3(transform.position.x + 2f, fallYThreshold, transform.position.z + 2f);

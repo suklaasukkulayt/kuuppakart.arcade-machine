@@ -20,7 +20,6 @@ public class MusicManager : MonoBehaviour
 
         SceneManager.sceneLoaded += OnSceneLoaded;
 
-        // Käynnistä musiikki heti, jos herätessä ei olla Game-scenessä
         if (SceneManager.GetActiveScene().name != "Game")
         {
             audioSource.Play();

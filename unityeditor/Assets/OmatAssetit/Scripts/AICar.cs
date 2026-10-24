@@ -5,26 +5,17 @@ public class AICar : MonoBehaviour
 {
     public Transform[] waypoints;
     private int currentWaypointIndex = 0;
-
     public float speed = 10f;
     public float rotationSpeed = 5f;
 
-    [Header("Vaikeustaso")]
-    [Tooltip("Kuinka paljon AI:n nopeutta kerrotaan Easy-tasolla (alle 1 = hitaampi).")]
+    [Header("Difficulty")]
     public float easyModeSpeedMultiplier = 0.85f;
-    [Tooltip("Kuinka paljon AI:n nopeutta kerrotaan Hard-tasolla (yli 1 = nopeampi).")]
     public float hardModeSpeedMultiplier = 1.15f;
-    [Tooltip("Kuinka monta yksikköä taaksepäin AI aloittaa Easy-tasolla (omaa aloitussuuntaansa pitkin).")]
     public float easyModeStartOffsetBack = 6f;
 
-    [Header("Törmäysreaktio (kun pelaaja osuu koviin)")]
-    [Tooltip("Kuinka suuri törmäysnopeus (suhteellinen, m/s) vaaditaan jotta AI 'säikähtää' ja päästää fysiikan hetkeksi vapaaksi (spinnaa/lentää). Pieni tönäisy takaa ei riitä.")]
+    [Header("Crashing")]
     public float stunImpactThreshold = 6f;
-
-    [Tooltip("Kuinka pitkään (s) AI on säikähtäneenä eikä ohjaa itseään -- fysiikka saa vaikuttaa vapaasti tänä aikana.")]
     public float stunDuration = 1.5f;
-
-    [Tooltip("Ylimääräinen satunnainen vääntövoima törmäyksen yhteydessä, jotta reaktio näyttää aina hauskalta/dramaattiselta riippumatta tarkasta osumakulmasta.")]
     public float extraSpinTorque = 8f;
 
     private Rigidbody rb;
@@ -34,9 +25,6 @@ public class AICar : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
-        // Vaikeustason vaikutus AI-autoon. Jos DifficultyManageria ei löydy
-        // (esim. Game-sceneä testataan suoraan), käytetään Normalia eli ei muutosta.
         if (DifficultyManager.Instance != null)
         {
             switch (DifficultyManager.Instance.SelectedDifficulty)
@@ -55,7 +43,6 @@ public class AICar : MonoBehaviour
         }
     }
 
-    // Reagoi vain toiseen autoon (esim. Playeriin), ei seiniin/terrainiin.
     void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.GetComponent<CarIdentify>() == null)
@@ -79,10 +66,6 @@ public class AICar : MonoBehaviour
         }
     }
 
-    // Siirretty Updatesta FixedUpdateen ja transform.Translate/rotation -> rb.MovePosition/MoveRotation.
-    // Sama syy kuin Player.cs:ssä aiemmin: suora Transform-asetus ohittaa fysiikkamoottorin,
-    // jolloin se riitelee samalla GameObjectilla olevan Rigidbodyn (gravitaatio, törmäykset)
-    // kanssa joka framessa -- tästä nykiminen ja osin myös seinien läpimeno tulivat.
     void FixedUpdate()
     {
         if (GameManager.Instance.Phase != RacePhase.Racing)
@@ -97,7 +80,7 @@ public class AICar : MonoBehaviour
             {
                 isStunned = false;
             }
-            return; // Fysiikka saa hetkeksi täyden vallan -- ei ohjata itse tänä aikana
+            return;
         }
 
         Transform target = waypoints[currentWaypointIndex];

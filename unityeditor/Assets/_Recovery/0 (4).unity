@@ -1334,6 +1334,12 @@ MonoBehaviour:
   - {fileID: 172186449}
   speed: 10
   rotationSpeed: 5
+  easyModeSpeedMultiplier: 0.85
+  hardModeSpeedMultiplier: 1.15
+  easyModeStartOffsetBack: 6
+  stunImpactThreshold: 6
+  stunDuration: 1.5
+  extraSpinTorque: 8
 --- !u!114 &215670168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10343,6 +10349,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Player
   baseSpeed: 10
   turnSpeed: 130
+  hardModeSpeedMultiplier: 0.9
   boostSpeed: 15
   boostDuration: 1.5
   boostCooldown: 4
@@ -10429,6 +10436,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PelaajanKierrosTarkastus
   checkpointCount: 11
   lapsText: {fileID: 0}
+  missedCheckpointMessageDuration: 2
+  missedCheckpointSuppressionAfterLap: 5
 --- !u!114 &1343382161
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10445,6 +10454,9 @@ MonoBehaviour:
   fallYThreshold: -5
   angleThreshold: 45
   angularVelocityMin: 0.5
+  stuckTimeThreshold: 1.5
+  correctionRetriggerCooldown: 1
+  maxCorrectionDuration: 2.5
   autoCorrectionDegreesPerSecond: 360
   finishAngleEpsilon: 0.5
   correctOnlyYaw: 1
@@ -14468,6 +14480,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Tuomari
   resultText: {fileID: 1758085783}
   kierrostenMaara: 3
+  kierros1Text: {fileID: 0}
+  kierros2Text: {fileID: 0}
+  kierros3Text: {fileID: 0}
+  lapsText: {fileID: 0}
+  parasIkinAikaText: {fileID: 0}
+  victoryCamera: {fileID: 0}
+  victoryCameraHeight: 15
+  backToMenuDelay: 10
+  mainMenuSceneName: StartScreen
 --- !u!4 &1974355557 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: cc02ad7ca6ce5d749911b558119a1706,

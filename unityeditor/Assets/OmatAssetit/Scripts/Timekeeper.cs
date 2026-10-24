@@ -15,20 +15,15 @@ public class Tuomari : MonoBehaviour
     public TMP_Text kierros3Text;
 
     [Header("Final Result")]
-    [Tooltip("Current LapsText. After the race this shows the total race time.")]
     public TMP_Text lapsText;
-    [Tooltip("Text that shows the best time ever achieved.")]
     public TMP_Text parasIkinAikaText;
 
     [Header("Victory Camera (when PLAYER wins)")]
-    [Tooltip("Camera inside the Player. Leave empty to find it automatically on the Player-tagged object.")]
     public Transform victoryCamera;
 
-    [Tooltip("How high above the AI car the camera should be during the victory view.")]
     public float victoryCameraHeight = 15f;
 
     [Header("Return To Main Menu")]
-    [Tooltip("Seconds after the winner is declared before returning to the main menu.")]
     public float backToMenuDelay = 10f;
     [Tooltip("Scene to load after the countdown.")]
     public string mainMenuSceneName = "StartScreen";
@@ -48,12 +43,10 @@ public class Tuomari : MonoBehaviour
         if (resultText != null)
             resultText.text = "";
 
-        // Lap time texts stay hidden until their lap has actually been completed.
-        SetLapTextVisible(kierros1Text, false);
-        SetLapTextVisible(kierros2Text, false);
-        SetLapTextVisible(kierros3Text, false);
+        SetLapTextVisible(kierros1Text, true);
+        SetLapTextVisible(kierros2Text, true);
+        SetLapTextVisible(kierros3Text, true);
 
-        // Best time is hidden until somebody finishes the race.
         SetBestTimeVisible(false);
 
         if (lapsText == null)
@@ -119,7 +112,6 @@ public class Tuomari : MonoBehaviour
             if (resultText != null)
                 resultText.text = $"<mark>WINNER: {winnerName}</mark>";
 
-            // Keep the total race time in LapsText.
             if (lapsText == null)
                 lapsText = FindLapsText();
 
@@ -136,7 +128,6 @@ public class Tuomari : MonoBehaviour
             if (id.kind == CarKind.Player)
                 ShowAiGapCamera();
 
-            // The return countdown is shown only in BoostText.
             StartCoroutine(BackToMainMenuCountdown());
         }
     }

@@ -2,45 +2,39 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
 
-// Lisää tämä skripti tyhjään GameObjectiin "DifficultySelect"-scenessä.
-// KOLME VAIHETTA:
-//  1) Vaikeustaso: A/D vaihtavat valintaa, W vahvistaa.
-//  2) FOV: A/D muuttavat FOV-arvoa +-5 per painallus, W vahvistaa.
-//  3) Kameranäkymä: A/D vaihtavat Third Person / First Person -välillä, W vahvistaa ja lataa Gamen.
-// Kaikki tekstit näkyvät koko ajan, mutta A/D vaikuttavat vain sen hetkisen vaiheen tekstiin.
 public class DifficultySelector : MonoBehaviour
 {
     private enum Stage { Difficulty, Fov, CameraView }
 
-    [Header("Vaikeustaso-tekstit (raahaa Inspectorissa)")]
+    [Header("Difficulty texts")]
     public TMP_Text easyText;
     public TMP_Text normalText;
     public TMP_Text hardText;
 
-    [Header("FOV-teksti (näkyvissä koko ajan, aktivoituu vaikeustason vahvistuksen jälkeen)")]
+    [Header("FOV text")]
     public TMP_Text fovText;
     public float fovStep = 5f;
     public float minFov = 40f;
     public float maxFov = 110f;
-    public float startingFov = 60f;
+    public float startingFov = 80f;
 
-    [Header("Kameranäkymä-tekstit (näkyvissä koko ajan, aktivoituu FOV-vahvistuksen jälkeen)")]
+    [Header("Camera view texts")]
     public TMP_Text thirdPersonText;
     public TMP_Text firstPersonText;
 
-    [Header("Väriasetukset")]
+    [Header("Color settings")]
     public Color selectedColor = Color.yellow;
     public Color unselectedColor = Color.white;
     public Color lockedColor = Color.gray;
 
-    [Header("Seuraava scene")]
+    [Header("Next scene")]
     public string gameSceneName = "Game";
 
     private readonly Difficulty[] difficultyOptions = { Difficulty.Easy, Difficulty.Normal, Difficulty.Hard };
-    private int difficultyIndex = 1; // Normal keskellä ja oletuksena valittuna
+    private int difficultyIndex = 1;
 
-    private readonly bool[] cameraOptions = { false, true }; // false = Third Person, true = First Person
-    private int cameraIndex = 0; // Third Person oletuksena (nykyinen kameran sijainti)
+    private readonly bool[] cameraOptions = { false, true };
+    private int cameraIndex = 0;
 
     private Stage stage = Stage.Difficulty;
     private float currentFov;
@@ -87,7 +81,7 @@ public class DifficultySelector : MonoBehaviour
                 ConfirmFov();
             }
         }
-        else // Stage.CameraView
+        else
         {
             if (Input.GetKeyDown(KeyCode.A))
             {
@@ -106,8 +100,6 @@ public class DifficultySelector : MonoBehaviour
         }
     }
 
-    // --- VAIHE 1: VAIKEUSTASO ---
-
     private void UpdateDifficultyVisuals()
     {
         bool stageActive = stage == Stage.Difficulty;
@@ -122,11 +114,9 @@ public class DifficultySelector : MonoBehaviour
         DifficultyManager.Instance.SelectedDifficulty = difficultyOptions[difficultyIndex];
 
         stage = Stage.Fov;
-        UpdateDifficultyVisuals(); // himmennetään "lukituksi"
-        UpdateFovVisuals();        // korostetaan FOV aktiiviseksi
+        UpdateDifficultyVisuals();
+        UpdateFovVisuals();
     }
-
-    // --- VAIHE 2: FOV ---
 
     private void ChangeFov(float delta)
     {
@@ -163,11 +153,10 @@ public class DifficultySelector : MonoBehaviour
         DifficultyManager.Instance.SelectedFov = currentFov;
 
         stage = Stage.CameraView;
-        UpdateFovVisuals();        // himmennetään "lukituksi"
-        UpdateCameraViewVisuals(); // korostetaan kameranäkymä aktiiviseksi
+        UpdateFovVisuals();
+        UpdateCameraViewVisuals();
     }
 
-    // --- VAIHE 3: KAMERANÄKYMÄ ---
 
     private void UpdateCameraViewVisuals()
     {
@@ -182,8 +171,6 @@ public class DifficultySelector : MonoBehaviour
         DifficultyManager.Instance.FirstPerson = cameraOptions[cameraIndex];
         SceneManager.LoadScene(gameSceneName);
     }
-
-    // --- YHTEISET APUMETODIT ---
 
     private void SetTextState(TMP_Text text, bool isCurrentSelection, bool stageActive)
     {
