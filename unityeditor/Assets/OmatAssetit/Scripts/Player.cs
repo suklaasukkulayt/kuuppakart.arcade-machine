@@ -65,6 +65,25 @@ public class Player : MonoBehaviour
     [Range(0.2f, 0.95f)] public float blockedRatio = 0.7f;
     private float crashCooldownTimer = 0f;
 
+    [Header("Ground following")]
+    public LayerMask groundMask = ~0;
+    public float groundCheckHeight = 1f;
+    public float groundSnapDistance = 0.4f;
+    public float lookAhead = 1.4f;
+    public float maxStepHeight = 0.5f;
+    public float maxSlopeAngle = 55f;
+    public float alignSharpness = 12f;
+    public float maxDepenetrationVelocity = 3f;
+
+    [Header("Collision filtering")]
+    public float lightObjectMassRatio = 0.25f;
+    public float lowObstacleHeight = 0.35f;
+    public float blockedTimeLimit = 0.15f;
+
+    private float blockedTimer = 0f;
+    private Vector3 commandedVelocity;
+    private readonly RaycastHit[] groundHits = new RaycastHit[8];
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -79,6 +98,7 @@ public class Player : MonoBehaviour
         currentMaxSpeed = baseSpeed;
 
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        rb.maxDepenetrationVelocity = maxDepenetrationVelocity;
 
         if (FindFirstObjectByType<Speedometer>() != null)
         {
@@ -142,6 +162,18 @@ public class Player : MonoBehaviour
         if (isStunned || crashCooldownTimer > 0f)
             return;
 
+        Rigidbody otherBody = collision.rigidbody;
+        if (otherBody != null
+            && !otherBody.isKinematic
+            && otherBody.mass < rb.mass * lightObjectMassRatio
+            && collision.gameObject.GetComponent<CarIdentify>() == null)
+        {
+            return;
+        }
+
+        if (collision.collider.bounds.max.y < rb.position.y + lowObstacleHeight)
+            return;
+
         ContactPoint contact = collision.GetContact(0);
 
         if (contact.normal.y > groundNormalY)
@@ -172,6 +204,8 @@ public class Player : MonoBehaviour
         crashCooldownTimer = stunTimer + crashCooldown;
         forwardSpeed = 0f;
         commandedXZ = Vector3.zero;
+        commandedVelocity = Vector3.zero;
+        blockedTimer = 0f;
 
         rb.linearVelocity = away * impactSpeed * bounceFactor + Vector3.up * impactSpeed * upFactor;
         rb.angularVelocity = Random.onUnitSphere * Mathf.Lerp(minSpin, maxSpin, severity);
@@ -208,19 +242,31 @@ public class Player : MonoBehaviour
             forwardSpeed = 0f;
             intendedVelocity = Vector3.zero;
             commandedXZ = Vector3.zero;
+            commandedVelocity = Vector3.zero;
+            blockedTimer = 0f;
             return;
         }
 
-        float commandedMag = commandedXZ.magnitude;
+        float commandedMag = commandedVelocity.magnitude;
         if (commandedMag > 1f)
         {
-            Vector3 v = rb.linearVelocity;
-            Vector3 actualXZ = new Vector3(v.x, 0f, v.z);
-            float actualAlong = Vector3.Dot(actualXZ, commandedXZ / commandedMag);
-            float ratio = actualAlong / commandedMag;
+            float along = Vector3.Dot(rb.linearVelocity, commandedVelocity / commandedMag);
+            float ratio = along / commandedMag;
 
             if (ratio < blockedRatio)
-                forwardSpeed *= Mathf.Clamp01(ratio);
+            {
+                blockedTimer += dt;
+                if (blockedTimer >= blockedTimeLimit)
+                    forwardSpeed *= Mathf.Clamp01(ratio);
+            }
+            else
+            {
+                blockedTimer = 0f;
+            }
+        }
+        else
+        {
+            blockedTimer = 0f;
         }
 
         float input = Input.GetAxisRaw("Vertical");
@@ -228,17 +274,86 @@ public class Player : MonoBehaviour
 
         UpdateForwardSpeed(input, dt);
 
-        Vector3 desired = transform.forward * forwardSpeed;
+        Vector3 flatForward = transform.forward;
+        flatForward.y = 0f;
+        flatForward = flatForward.sqrMagnitude > 0.0001f ? flatForward.normalized : Vector3.forward;
+
+        float dirSign = forwardSpeed >= 0f ? 1f : -1f;
+        Vector3 moveFlat = flatForward * dirSign;
+        float speedAbs = Mathf.Abs(forwardSpeed);
+
+        RaycastHit hitCenter;
+        bool grounded = ProbeGround(rb.position + Vector3.up * groundCheckHeight, groundCheckHeight + groundSnapDistance, out hitCenter)
+                        && hitCenter.normal.y > Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad);
+
         Vector3 vel = rb.linearVelocity;
-        vel.x = desired.x;
-        vel.z = desired.z;
-        if (desired.y > 0f)
-            vel.y = desired.y;
+        Vector3 desired;
+
+        if (grounded)
+        {
+            float maxTan = Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad);
+            Vector3 n = hitCenter.normal;
+            float slopeNormal = -(n.x * moveFlat.x + n.z * moveFlat.z) / Mathf.Max(n.y, 0.01f);
+            float slope = slopeNormal;
+
+            RaycastHit hitAhead;
+            if (ProbeGround(rb.position + moveFlat * lookAhead + Vector3.up * groundCheckHeight, groundCheckHeight + 1f, out hitAhead))
+            {
+                float dy = hitAhead.point.y - hitCenter.point.y;
+                if (dy <= maxStepHeight)
+                    slope = dy / lookAhead;
+            }
+
+            slope = Mathf.Clamp(slope, -maxTan, maxTan);
+
+            Vector3 moveDir = (moveFlat + Vector3.up * slope).normalized;
+            desired = moveDir * speedAbs;
+            vel = desired;
+        }
+        else
+        {
+            desired = moveFlat * speedAbs;
+            vel.x = desired.x;
+            vel.z = desired.z;
+        }
+
         rb.linearVelocity = vel;
         intendedVelocity = desired;
         commandedXZ = new Vector3(desired.x, 0f, desired.z);
+        commandedVelocity = desired;
 
-        rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turn, 0f));
+        Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn, 0f);
+        if (grounded)
+        {
+            Quaternion aligned = Quaternion.FromToRotation(rot * Vector3.up, hitCenter.normal) * rot;
+            rot = Quaternion.Slerp(rot, aligned, 1f - Mathf.Exp(-alignSharpness * dt));
+            rb.angularVelocity = Vector3.zero;
+        }
+        rb.MoveRotation(rot);
+    }
+
+    bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)
+    {
+        int count = Physics.RaycastNonAlloc(origin, Vector3.down, groundHits, distance, groundMask, QueryTriggerInteraction.Ignore);
+        best = default;
+        float bestDistance = float.MaxValue;
+        bool found = false;
+
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit h = groundHits[i];
+            if (h.collider.attachedRigidbody != null)
+                continue;
+
+            if (h.distance < bestDistance)
+            {
+                bestDistance = h.distance;
+                best = h;
+                found = true;
+            }
+        }
+
+        return found;
     }
 
     void UpdateForwardSpeed(float input, float dt)
