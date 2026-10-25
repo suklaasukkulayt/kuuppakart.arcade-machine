@@ -145,7 +145,7 @@ public class Speedometer : MonoBehaviour
         {
             boostArc.fillAmount = player.BoostRemaining01 * (SweepAngle / 360f);
             boostArc.color = boostActiveColor;
-            statusText.text = "BOOST!";
+            statusText.text = "BOOSTED!";
             statusText.color = boostActiveColor;
         }
         else if (player.BoostReady)
@@ -154,7 +154,7 @@ public class Speedometer : MonoBehaviour
             float pulse = 0.65f + 0.35f * Mathf.PingPong(Time.time * 2f, 1f);
             Color c = boostReadyColor; c.a = pulse;
             boostArc.color = c;
-            statusText.text = "BOOST READY [B]";
+            statusText.text = "BOOST READY!";
             statusText.color = c;
         }
         else
