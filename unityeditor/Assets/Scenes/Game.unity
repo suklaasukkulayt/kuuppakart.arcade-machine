@@ -3333,6 +3333,8 @@ MonoBehaviour:
   - {fileID: 172186449}
   speed: 12
   rotationSpeed: 4
+  acceleration: 6
+  topSpeedAccelerationFactor: 0.35
   easyModeSpeedMultiplier: 0.85
   hardModeSpeedMultiplier: 1.15
   easyModeStartOffsetBack: 6
@@ -13183,6 +13185,68 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: abdc46a0af1040842b6d23ef7f20bd77, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResetManager
+--- !u!1 &850078507
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 850078509}
+  - component: {fileID: 850078508}
+  m_Layer: 0
+  m_Name: Speedometer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &850078508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 850078507}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7e291f83594d744491dafafcaeffd26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Speedometer
+  player: {fileID: 1343382154}
+  speedDisplayMultiplier: 10
+  unitText: km/h
+  maxDisplaySpeed: 200
+  tickStep: 20
+  labelStep: 40
+  smoothing: 10
+  size: 380
+  margin: {x: 40, y: 40}
+  trackColor: {r: 0, g: 0, b: 0, a: 0.55}
+  speedColor: {r: 0.25, g: 0.85, b: 1, a: 1}
+  speedFastColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  boostActiveColor: {r: 1, g: 0.55, b: 0.1, a: 1}
+  boostReadyColor: {r: 0.3, g: 1, b: 0.5, a: 1}
+  boostChargingColor: {r: 0.55, g: 0.6, b: 0.7, a: 1}
+  needleColor: {r: 1, g: 0.25, b: 0.2, a: 1}
+  font: {fileID: 11400000, guid: 1622d5c044bcd68469df6508fbeeef13, type: 2}
+  customRingSprite: {fileID: 0}
+--- !u!4 &850078509
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 850078507}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 14.79577, y: 0.1, z: 47.37872}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &851081741
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16266,6 +16330,10 @@ PrefabInstance:
     - target: {fileID: 100000, guid: 522a332726338424a9a7da7796ce3440, type: 3}
       propertyPath: m_TagString
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 100002, guid: 522a332726338424a9a7da7796ce3440, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 522a332726338424a9a7da7796ce3440, type: 3}
       propertyPath: m_LocalPosition.x
@@ -20478,17 +20546,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Player
   baseSpeed: 12
   turnSpeed: 130
+  acceleration: 7
+  topSpeedAccelerationFactor: 0.35
+  coastDeceleration: 3.5
+  brakeDeceleration: 18
+  reverseSpeedFactor: 0.4
+  reverseAcceleration: 5
+  overspeedDeceleration: 5
   hardModeSpeedMultiplier: 0.9
-  stunImpactThreshold: 3
-  stunDuration: 1
-  minStunDuration: 0.8
+  crashMinSpeed: 7
+  crashFullSpeed: 16
+  minStunTime: 0.4
+  maxStunTime: 1
   crashCooldown: 0.5
   groundNormalY: 0.7
-  crashBounceFactor: 0.5
-  crashUpFactor: 0.35
-  crashSpinPerImpact: 0.8
-  maxCrashSpin: 12
+  bounceFactor: 0.25
+  upFactor: 0.15
+  minSpin: 1.5
+  maxSpin: 6
   boostSpeed: 16
+  boostAcceleration: 14
   boostDuration: 1.5
   boostCooldown: 7
   uiText: {fileID: 1987582174}
@@ -34239,3 +34316,4 @@ SceneRoots:
   - {fileID: 1997408085}
   - {fileID: 33559865}
   - {fileID: 849546287}
+  - {fileID: 850078509}

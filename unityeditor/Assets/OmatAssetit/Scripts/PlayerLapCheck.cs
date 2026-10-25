@@ -54,7 +54,7 @@ public class PelaajanKierrosTarkastus : MonoBehaviour
 
     private IEnumerator MissedCheckpointsRoutine()
     {
-        lapsText.text = "You didn't hit all checkpoints!";
+        lapsText.text = "<mark=#ff0000>You didn't hit all checkpoints!</mark>";
         yield return new WaitForSeconds(missedCheckpointMessageDuration);
         UpdateLapsTextDisplay();
         missedCheckpointRoutine = null;

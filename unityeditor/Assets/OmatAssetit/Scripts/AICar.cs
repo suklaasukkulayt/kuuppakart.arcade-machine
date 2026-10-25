@@ -8,6 +8,10 @@ public class AICar : MonoBehaviour
     public float speed = 10f;
     public float rotationSpeed = 5f;
 
+    [Header("Acceleration")]
+    public float acceleration = 6f;
+    [Range(0.05f, 1f)] public float topSpeedAccelerationFactor = 0.35f;
+
     [Header("Difficulty")]
     public float easyModeSpeedMultiplier = 0.85f;
     public float hardModeSpeedMultiplier = 1.15f;
@@ -21,6 +25,7 @@ public class AICar : MonoBehaviour
     private Rigidbody rb;
     private bool isStunned = false;
     private float stunTimer = 0f;
+    private float currentSpeed = 0f;
     public bool LapArmed { get; private set; } = false;
 
     public void ConsumeLap()
@@ -69,6 +74,7 @@ public class AICar : MonoBehaviour
         {
             isStunned = true;
             stunTimer = stunDuration;
+            currentSpeed = 0f;
 
             Vector3 randomAxis = new Vector3(
                 Random.Range(-1f, 1f),
@@ -97,6 +103,10 @@ public class AICar : MonoBehaviour
             return;
         }
 
+        float t = speed > 0.01f ? Mathf.Clamp01(currentSpeed / speed) : 1f;
+        float a = acceleration * Mathf.Lerp(1f, topSpeedAccelerationFactor, t * t);
+        currentSpeed = Mathf.MoveTowards(currentSpeed, speed, a * Time.fixedDeltaTime);
+
         Transform target = waypoints[currentWaypointIndex];
         Vector3 targetXZ = new Vector3(target.position.x, rb.position.y, target.position.z);
         Vector3 direction = (targetXZ - rb.position).normalized;
@@ -108,7 +118,7 @@ public class AICar : MonoBehaviour
             rb.MoveRotation(newRotation);
         }
 
-        rb.MovePosition(rb.position + transform.forward * speed * Time.fixedDeltaTime);
+        rb.MovePosition(rb.position + transform.forward * currentSpeed * Time.fixedDeltaTime);
 
         if (Vector3.Distance(rb.position, targetXZ) < 2f)
         {
