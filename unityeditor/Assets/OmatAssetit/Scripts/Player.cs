@@ -85,6 +85,14 @@ public class Player : MonoBehaviour
     public float slopeHoldAcceleration = 2f;
     public float maxRollBackSpeed = 8f;
 
+    [Header("Boost on slopes")]
+    public float boostSlopeFactor = 0.1f;
+
+    [Header("Step up")]
+    public float stepProbeReach = 0.5f;
+    public float stepUpSpeed = 4f;
+    public float stepProbeHalfWidth = 0.4f;
+
     [Header("Car and wall hits")]
     public float carHitMinSpeed = 4f;
     public float carBounceFactor = 0.6f;
@@ -332,6 +340,8 @@ public class Player : MonoBehaviour
             float slopeForward = -(gn.x * flatForward.x + gn.z * flatForward.z) / Mathf.Max(gn.y, 0.01f);
             float sinSlope = slopeForward / Mathf.Sqrt(1f + slopeForward * slopeForward);
             slopeAccel = -Physics.gravity.magnitude * sinSlope * slopeGravityFactor;
+            if (isBoosted)
+                slopeAccel *= boostSlopeFactor;
         }
 
         UpdateForwardSpeed(input, dt, slopeAccel);
@@ -363,6 +373,10 @@ public class Player : MonoBehaviour
             Vector3 moveDir = (moveFlat + Vector3.up * slope).normalized;
             desired = moveDir * speedAbs;
             vel = desired;
+
+            float stepVelocity = ProbeStepUp(moveFlat, speedAbs, dt);
+            if (stepVelocity > vel.y)
+                vel.y = stepVelocity;
         }
         else
         {
@@ -384,6 +398,42 @@ public class Player : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
         rb.MoveRotation(rot);
+    }
+
+    float ProbeStepUp(Vector3 moveFlat, float speedAbs, float dt)
+    {
+        if (speedAbs < 0.5f || moveFlat.sqrMagnitude < 0.01f)
+            return 0f;
+
+        float reach = stepProbeReach + speedAbs * dt;
+        float startHeight = maxStepHeight + 0.3f;
+
+        Vector3 center = rb.position + moveFlat * (1f + reach * 0.5f) + Vector3.up * startHeight;
+        Vector3 half = new Vector3(stepProbeHalfWidth, 0.05f, reach * 0.5f);
+        Quaternion orientation = Quaternion.LookRotation(moveFlat, Vector3.up);
+
+        int count = Physics.BoxCastNonAlloc(center, half, Vector3.down, groundHits, orientation,
+                                            startHeight + 0.3f, groundMask, QueryTriggerInteraction.Ignore);
+
+        float topY = float.MinValue;
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit h = groundHits[i];
+            if (h.collider.attachedRigidbody != null)
+                continue;
+
+            if (h.point.y > topY)
+                topY = h.point.y;
+        }
+
+        if (topY == float.MinValue)
+            return 0f;
+
+        float rise = topY - rb.position.y;
+        if (rise < 0.04f || rise > maxStepHeight)
+            return 0f;
+
+        return Mathf.Min(stepUpSpeed, rise / 0.12f + 0.5f);
     }
 
     bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)

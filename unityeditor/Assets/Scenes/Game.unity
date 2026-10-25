@@ -13224,6 +13224,8 @@ MonoBehaviour:
   size: 380
   margin: {x: 40, y: 40}
   leftSide: 1
+  labelRadiusFactor: 0.635
+  statusTextRaise: 8
   trackColor: {r: 0, g: 0, b: 0, a: 0.55}
   speedColor: {r: 0.25, g: 0.85, b: 1, a: 1}
   speedFastColor: {r: 1, g: 0.85, b: 0.2, a: 1}
@@ -20571,6 +20573,33 @@ MonoBehaviour:
   boostCooldown: 7
   uiText: {fileID: 1987582174}
   blockedRatio: 0.7
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  groundCheckHeight: 1
+  groundSnapDistance: 0.4
+  lookAhead: 1.4
+  maxStepHeight: 0.5
+  maxSlopeAngle: 55
+  alignSharpness: 12
+  maxDepenetrationVelocity: 3
+  lightObjectMassRatio: 0.25
+  lowObstacleHeight: 0.35
+  blockedTimeLimit: 0.15
+  slopeGravityFactor: 1
+  slopeHoldAcceleration: 2
+  maxRollBackSpeed: 8
+  boostSlopeFactor: 0.1
+  stepProbeReach: 0.5
+  stepUpSpeed: 4
+  stepProbeHalfWidth: 0.4
+  carHitMinSpeed: 4
+  carBounceFactor: 0.6
+  carUpFactor: 0.4
+  carSpinMultiplier: 1.8
+  wallHardHitSpeed: 10
+  wallExtraBounce: 3
+  wallExtraSpin: 4
 --- !u!4 &1343382155 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 522a332726338424a9a7da7796ce3440,
@@ -31175,7 +31204,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -435.22495, y: 104.48603}
+  m_AnchoredPosition: {x: -435.23, y: 150}
   m_SizeDelta: {x: 394.9059, y: 65.028}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1934935498
@@ -31919,7 +31948,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -502, y: -304.32}
+  m_AnchoredPosition: {x: 504.62, y: -173}
   m_SizeDelta: {x: 261.361, y: 111.361}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1987582174
@@ -32917,7 +32946,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -507.17, y: -125.6}
+  m_AnchoredPosition: {x: -507.17004, y: -15.700012}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2047176658
