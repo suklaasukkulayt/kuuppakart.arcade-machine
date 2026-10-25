@@ -93,6 +93,7 @@ public class Player : MonoBehaviour
     public float stepProbeReach = 0.5f;
     public float stepUpSpeed = 4f;
     public float stepProbeHalfWidth = 0.4f;
+    public string stepObstacleName = "rail";
     public float stepMinHeight = 0.08f;
     [Range(0.1f, 1f)] public float stepImpededRatio = 0.9f;
 
@@ -433,6 +434,9 @@ public class Player : MonoBehaviour
             if (h.collider.attachedRigidbody != null)
                 continue;
 
+            if (!IsStepObstacle(h.collider))
+                continue;
+
             if (h.point.y > topY)
                 topY = h.point.y;
         }
@@ -446,6 +450,18 @@ public class Player : MonoBehaviour
             return 0f;
 
         return Mathf.Min(stepUpSpeed, rise / 0.12f + 0.5f);
+    }
+
+    bool IsStepObstacle(Collider col)
+    {
+        if (string.IsNullOrEmpty(stepObstacleName))
+            return true;
+
+        if (col.gameObject.name.IndexOf(stepObstacleName, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+
+        Transform parent = col.transform.parent;
+        return parent != null && parent.name.IndexOf(stepObstacleName, System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)
