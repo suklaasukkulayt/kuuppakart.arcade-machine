@@ -47,6 +47,7 @@ public class Player : MonoBehaviour
     public float BoostRemaining01 => isBoosted ? Mathf.Clamp01(boostTimer / boostDuration) : 0f;
     public float BoostCooldownProgress01 => BoostReady ? 1f : (isBoosted ? 0f : 1f - Mathf.Clamp01(cooldownTimer / boostCooldown));
     public float BoostCooldownLeft => Mathf.Max(0f, cooldownTimer);
+
     private float currentMaxSpeed;
     private float boostTimer = 0f;
     private float cooldownTimer = 0f;
@@ -55,9 +56,13 @@ public class Player : MonoBehaviour
     private bool isStunned = false;
     private float stunTimer = 0f;
     private bool writeBoostText = true;
+
     private float forwardSpeed = 0f;
     private PlayerUprightAndShortcuts_AutoFallReset autoCorrector;
+
     private Vector3 intendedVelocity;
+    private Vector3 commandedXZ;
+    [Range(0.2f, 0.95f)] public float blockedRatio = 0.7f;
     private float crashCooldownTimer = 0f;
 
     void Start()
@@ -72,6 +77,7 @@ public class Player : MonoBehaviour
         }
 
         currentMaxSpeed = baseSpeed;
+
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
         if (FindFirstObjectByType<Speedometer>() != null)
@@ -165,6 +171,7 @@ public class Player : MonoBehaviour
         stunTimer = Mathf.Lerp(minStunTime, maxStunTime, severity);
         crashCooldownTimer = stunTimer + crashCooldown;
         forwardSpeed = 0f;
+        commandedXZ = Vector3.zero;
 
         rb.linearVelocity = away * impactSpeed * bounceFactor + Vector3.up * impactSpeed * upFactor;
         rb.angularVelocity = Random.onUnitSphere * Mathf.Lerp(minSpin, maxSpin, severity);
@@ -200,14 +207,21 @@ public class Player : MonoBehaviour
         {
             forwardSpeed = 0f;
             intendedVelocity = Vector3.zero;
+            commandedXZ = Vector3.zero;
             return;
         }
 
-        float actual = Vector3.Dot(rb.linearVelocity, transform.forward);
-        if (forwardSpeed > 0f && actual < forwardSpeed - 2f)
-            forwardSpeed = Mathf.Max(actual, 0f);
-        else if (forwardSpeed < 0f && actual > forwardSpeed + 2f)
-            forwardSpeed = Mathf.Min(actual, 0f);
+        float commandedMag = commandedXZ.magnitude;
+        if (commandedMag > 1f)
+        {
+            Vector3 v = rb.linearVelocity;
+            Vector3 actualXZ = new Vector3(v.x, 0f, v.z);
+            float actualAlong = Vector3.Dot(actualXZ, commandedXZ / commandedMag);
+            float ratio = actualAlong / commandedMag;
+
+            if (ratio < blockedRatio)
+                forwardSpeed *= Mathf.Clamp01(ratio);
+        }
 
         float input = Input.GetAxisRaw("Vertical");
         float turn = Input.GetAxis("Horizontal") * turnSpeed * dt;
@@ -222,6 +236,7 @@ public class Player : MonoBehaviour
             vel.y = desired.y;
         rb.linearVelocity = vel;
         intendedVelocity = desired;
+        commandedXZ = new Vector3(desired.x, 0f, desired.z);
 
         rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turn, 0f));
     }

@@ -18,6 +18,7 @@ public class Speedometer : MonoBehaviour
     [Header("Layout")]
     public float size = 380f;
     public Vector2 margin = new Vector2(40f, 40f);
+    public bool leftSide = true;
 
     [Header("Colors")]
     public Color trackColor = new Color(0f, 0f, 0f, 0.55f);
@@ -72,9 +73,10 @@ public class Speedometer : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
 
         root = NewRect("Root", cgo.transform, new Vector2(size, size));
-        root.anchorMin = root.anchorMax = new Vector2(1f, 0f);
-        root.pivot = new Vector2(1f, 0f);
-        root.anchoredPosition = new Vector2(-margin.x, margin.y);
+        float side = leftSide ? 0f : 1f;
+        root.anchorMin = root.anchorMax = new Vector2(side, 0f);
+        root.pivot = new Vector2(side, 0f);
+        root.anchoredPosition = new Vector2(leftSide ? margin.x : -margin.x, margin.y);
 
         Image bg = NewImage("Backdrop", root, new Vector2(size, size), MakeDiscSprite(256), new Color(0f, 0f, 0f, 0.35f));
         bg.raycastTarget = false;

@@ -13223,6 +13223,7 @@ MonoBehaviour:
   smoothing: 10
   size: 380
   margin: {x: 40, y: 40}
+  leftSide: 1
   trackColor: {r: 0, g: 0, b: 0, a: 0.55}
   speedColor: {r: 0.25, g: 0.85, b: 1, a: 1}
   speedFastColor: {r: 1, g: 0.85, b: 0.2, a: 1}
@@ -20569,6 +20570,7 @@ MonoBehaviour:
   boostDuration: 1.5
   boostCooldown: 7
   uiText: {fileID: 1987582174}
+  blockedRatio: 0.7
 --- !u!4 &1343382155 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 522a332726338424a9a7da7796ce3440,
@@ -32915,7 +32917,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -505.65976, y: -129.09871}
+  m_AnchoredPosition: {x: -507.17, y: -125.6}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2047176658
