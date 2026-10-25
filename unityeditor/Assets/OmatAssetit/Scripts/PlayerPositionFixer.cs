@@ -35,6 +35,20 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
     float correctionCooldownTimer = 0f;
     float correctionElapsedTime = 0f;
     public bool IsAutoCorrecting => isAutoCorrecting;
+    bool suspended = false;
+    public bool Suspended
+    {
+        get => suspended;
+        set
+        {
+            suspended = value;
+            if (value)
+            {
+                isAutoCorrecting = false;
+                tiltTimer = 0f;
+            }
+        }
+    }
 
     void Awake()
     {
@@ -54,6 +68,12 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (suspended)
+        {
+            tiltTimer = 0f;
+            return;
+        }
+
         if (correctionCooldownTimer > 0f)
         {
             correctionCooldownTimer -= Time.fixedDeltaTime;

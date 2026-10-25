@@ -13,13 +13,16 @@ public class Player : MonoBehaviour
 
     
     [Header("Crashing")]
-    public float stunImpactThreshold = 6f;
-    public float stunDuration = 1.5f;
-    public float extraSpinTorque = 8f;
-    public float crashLaunchMultiplier = 1.5f;
-    public float crashUpwardMultiplier = 0.8f;
+    public float stunImpactThreshold = 3f;
+    public float stunDuration = 1f;
+    public float minStunDuration = 0.8f;
+    public float crashCooldown = 0.5f;
+    public float groundNormalY = 0.7f;
+    public float crashBounceFactor = 0.5f;
+    public float crashUpFactor = 0.35f;
+    public float crashSpinPerImpact = 0.8f;
+    public float maxCrashSpin = 12f;
     private RigidbodyConstraints normalConstraints;
-    private bool wasAutoCorrectorEnabled;
 
     [Header("Boost settings")]
     public float boostSpeed = 15f;
@@ -36,15 +39,8 @@ public class Player : MonoBehaviour
     private float stunTimer = 0f;
 
     private PlayerUprightAndShortcuts_AutoFallReset autoCorrector;
-
-    private Vector3 lastPosition;
-    private Vector3 measuredVelocity;
+    private Vector3 intendedVelocity;
     private float crashCooldownTimer = 0f;
-
-    [Header("Crash tuning")]
-    public float minStunDuration = 0.8f;
-    public float crashCooldown = 0.5f;
-    public float groundNormalY = 0.7f;
 
     void Start()
     {
@@ -58,7 +54,7 @@ public class Player : MonoBehaviour
         }
 
         currentSpeed = baseSpeed;
-        lastPosition = rb.position;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
     }
 
     void Update()
@@ -121,23 +117,20 @@ void OnCollisionEnter(Collision collision)
         return;
 
     Vector3 away = contact.normal;
-    if (Vector3.Dot(away, rb.position - collision.transform.position) < 0f)
+    if (Vector3.Dot(away, rb.position - contact.point) < 0f)
         away = -away;
     away.y = 0f;
     away = away.sqrMagnitude > 0.001f ? away.normalized : -transform.forward;
 
     Vector3 otherVel = collision.rigidbody != null ? collision.rigidbody.linearVelocity : Vector3.zero;
-    float impactSpeed = Mathf.Max(
-        collision.relativeVelocity.magnitude,
-        (measuredVelocity - otherVel).magnitude
-    );
+    float intoWall = Mathf.Max(0f, Vector3.Dot(intendedVelocity - otherVel, -away));
+    float impactSpeed = Mathf.Max(intoWall, Mathf.Abs(Vector3.Dot(collision.relativeVelocity, away)));
 
     if (impactSpeed < stunImpactThreshold)
         return;
 
-    wasAutoCorrectorEnabled = autoCorrector != null && autoCorrector.enabled;
     if (autoCorrector != null)
-        autoCorrector.enabled = false;
+        autoCorrector.Suspended = true; 
 
     rb.constraints = RigidbodyConstraints.None;
 
@@ -145,11 +138,9 @@ void OnCollisionEnter(Collision collision)
     stunTimer = Mathf.Max(stunDuration, minStunDuration);
     crashCooldownTimer = stunTimer + crashCooldown;
 
-    Vector3 launch = (away + Vector3.up * crashUpwardMultiplier) * crashLaunchMultiplier * impactSpeed;
-    rb.linearVelocity = Vector3.zero;
-    rb.angularVelocity = Vector3.zero;
-    rb.AddForce(launch, ForceMode.Impulse);
-    rb.AddTorque(Random.onUnitSphere * extraSpinTorque * impactSpeed, ForceMode.Impulse);
+    rb.linearVelocity = away * impactSpeed * crashBounceFactor + Vector3.up * impactSpeed * crashUpFactor;
+    float spin = Mathf.Min(impactSpeed * crashSpinPerImpact, maxCrashSpin);
+    rb.angularVelocity = Random.onUnitSphere * spin;
 }
 
 void FixedUpdate()
@@ -158,8 +149,6 @@ void FixedUpdate()
         return;
 
     float dt = Time.fixedDeltaTime;
-    measuredVelocity = (rb.position - lastPosition) / dt;
-    lastPosition = rb.position;
 
     if (crashCooldownTimer > 0f)
         crashCooldownTimer -= dt;
@@ -172,22 +161,32 @@ void FixedUpdate()
         {
             isStunned = false;
             rb.constraints = normalConstraints;
-            rb.angularVelocity = Vector3.zero;
 
             if (autoCorrector != null)
-                autoCorrector.enabled = wasAutoCorrectorEnabled;
+                autoCorrector.Suspended = false;
         }
 
         return;
     }
 
     if (autoCorrector != null && autoCorrector.IsAutoCorrecting)
+    {
+        intendedVelocity = Vector3.zero;
         return;
+    }
 
-    float move = Input.GetAxis("Vertical") * currentSpeed * dt;
+    float input = Input.GetAxis("Vertical");
     float turn = Input.GetAxis("Horizontal") * turnSpeed * dt;
 
-    rb.MovePosition(rb.position + transform.forward * move);
+    Vector3 desired = transform.forward * (input * currentSpeed);
+    Vector3 vel = rb.linearVelocity;
+    vel.x = desired.x;
+    vel.z = desired.z;
+    if (desired.y > 0f)
+        vel.y = desired.y;
+    rb.linearVelocity = vel;
+    intendedVelocity = desired;
+
     rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turn, 0f));
 }
 
