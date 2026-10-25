@@ -21,6 +21,18 @@ public class AICar : MonoBehaviour
     private Rigidbody rb;
     private bool isStunned = false;
     private float stunTimer = 0f;
+    public bool LapArmed { get; private set; } = false;
+
+    public void ConsumeLap()
+    {
+        LapArmed = false;
+    }
+
+    void Awake()
+    {
+        if (GetComponent<PelaajanKierrosTarkastus>() == null)
+            gameObject.AddComponent<PelaajanKierrosTarkastus>();
+    }
 
     void Start()
     {
@@ -31,7 +43,9 @@ public class AICar : MonoBehaviour
             {
                 case Difficulty.Easy:
                     speed *= easyModeSpeedMultiplier;
-                    rb.position -= transform.forward * easyModeStartOffsetBack;
+                    Vector3 backPos = rb.position - transform.forward * easyModeStartOffsetBack;
+                    rb.position = backPos;
+                    transform.position = backPos;
                     break;
                 case Difficulty.Hard:
                     speed *= hardModeSpeedMultiplier;
@@ -99,6 +113,9 @@ public class AICar : MonoBehaviour
         if (Vector3.Distance(rb.position, targetXZ) < 2f)
         {
             currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Length;
+
+            if (currentWaypointIndex == 0)
+                LapArmed = true;
         }
     }
 }

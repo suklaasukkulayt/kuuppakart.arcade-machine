@@ -76,6 +76,30 @@ public class Tuomari : MonoBehaviour
             return;
         }
 
+        if (id.kind == CarKind.AI)
+        {
+            AICar ai = car.GetComponent<AICar>();
+            if (ai != null)
+            {
+                if (!ai.LapArmed)
+                    return;
+
+                PelaajanKierrosTarkastus aiValidator = car.GetComponent<PelaajanKierrosTarkastus>();
+                if (aiValidator != null)
+                {
+                    if (!aiValidator.AllVisitedThisLap)
+                    {
+                        Debug.Log("AI crossed the finish line, but hasn't hit all the checkpoints!");
+                        return;
+                    }
+
+                    aiValidator.ResetLap();
+                }
+
+                ai.ConsumeLap();
+            }
+        }
+
         if (id.kind == CarKind.Player)
         {
             var validator = car.GetComponent<PelaajanKierrosTarkastus>();

@@ -20483,15 +20483,18 @@ MonoBehaviour:
   baseSpeed: 12
   turnSpeed: 130
   hardModeSpeedMultiplier: 0.9
-  stunImpactThreshold: 0.01
-  stunDuration: 0
-  extraSpinTorque: 20
-  crashLaunchMultiplier: 40
+  stunImpactThreshold: 3
+  stunDuration: 1
+  extraSpinTorque: 8
+  crashLaunchMultiplier: 10
   crashUpwardMultiplier: 0.8
   boostSpeed: 16
   boostDuration: 1.5
   boostCooldown: 7
   uiText: {fileID: 1987582174}
+  minStunDuration: 0.8
+  crashCooldown: 0.5
+  groundNormalY: 0.7
 --- !u!4 &1343382155 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 522a332726338424a9a7da7796ce3440,

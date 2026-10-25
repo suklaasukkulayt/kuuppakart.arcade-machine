@@ -37,6 +37,15 @@ public class Player : MonoBehaviour
 
     private PlayerUprightAndShortcuts_AutoFallReset autoCorrector;
 
+    private Vector3 lastPosition;
+    private Vector3 measuredVelocity;
+    private float crashCooldownTimer = 0f;
+
+    [Header("Crash tuning")]
+    public float minStunDuration = 0.8f;
+    public float crashCooldown = 0.5f;
+    public float groundNormalY = 0.7f;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -49,6 +58,7 @@ public class Player : MonoBehaviour
         }
 
         currentSpeed = baseSpeed;
+        lastPosition = rb.position;
     }
 
     void Update()
@@ -97,41 +107,49 @@ public class Player : MonoBehaviour
         }
     }
 
-void OnCollisionEnter(Collision collision) {
-    float impactSpeed = collision.relativeVelocity.magnitude;
+void OnCollisionEnter(Collision collision)
+{
+    if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
+        return;
+
+    if (isStunned || crashCooldownTimer > 0f)
+        return;
+
+    ContactPoint contact = collision.GetContact(0);
+
+    if (contact.normal.y > groundNormalY)
+        return;
+
+    Vector3 away = contact.normal;
+    if (Vector3.Dot(away, rb.position - collision.transform.position) < 0f)
+        away = -away;
+    away.y = 0f;
+    away = away.sqrMagnitude > 0.001f ? away.normalized : -transform.forward;
+
+    Vector3 otherVel = collision.rigidbody != null ? collision.rigidbody.linearVelocity : Vector3.zero;
+    float impactSpeed = Mathf.Max(
+        collision.relativeVelocity.magnitude,
+        (measuredVelocity - otherVel).magnitude
+    );
 
     if (impactSpeed < stunImpactThreshold)
         return;
 
-    if (!isStunned)
-    {
-        wasAutoCorrectorEnabled =
-            autoCorrector != null && autoCorrector.enabled;
+    wasAutoCorrectorEnabled = autoCorrector != null && autoCorrector.enabled;
+    if (autoCorrector != null)
+        autoCorrector.enabled = false;
 
-        if (autoCorrector != null)
-            autoCorrector.enabled = false;
-
-        rb.constraints = RigidbodyConstraints.None;
-    }
+    rb.constraints = RigidbodyConstraints.None;
 
     isStunned = true;
-    stunTimer = stunDuration;
+    stunTimer = Mathf.Max(stunDuration, minStunDuration);
+    crashCooldownTimer = stunTimer + crashCooldown;
 
-    Vector3 launchDirection =
-        collision.relativeVelocity.sqrMagnitude > 0.01f
-        ? -collision.relativeVelocity.normalized
-        : transform.forward;
-
-    Vector3 launchForce =
-        launchDirection * impactSpeed * crashLaunchMultiplier
-        + Vector3.up * impactSpeed * crashUpwardMultiplier;
-
-    rb.AddForce(launchForce, ForceMode.Impulse);
-
-    rb.AddTorque(
-        Random.onUnitSphere * extraSpinTorque * impactSpeed,
-        ForceMode.Impulse
-    );
+    Vector3 launch = (away + Vector3.up * crashUpwardMultiplier) * crashLaunchMultiplier * impactSpeed;
+    rb.linearVelocity = Vector3.zero;
+    rb.angularVelocity = Vector3.zero;
+    rb.AddForce(launch, ForceMode.Impulse);
+    rb.AddTorque(Random.onUnitSphere * extraSpinTorque * impactSpeed, ForceMode.Impulse);
 }
 
 void FixedUpdate()
@@ -139,14 +157,22 @@ void FixedUpdate()
     if (GameManager.Instance.Phase != RacePhase.Racing)
         return;
 
+    float dt = Time.fixedDeltaTime;
+    measuredVelocity = (rb.position - lastPosition) / dt;
+    lastPosition = rb.position;
+
+    if (crashCooldownTimer > 0f)
+        crashCooldownTimer -= dt;
+
     if (isStunned)
     {
-        stunTimer -= Time.fixedDeltaTime;
+        stunTimer -= dt;
 
         if (stunTimer <= 0f)
         {
             isStunned = false;
             rb.constraints = normalConstraints;
+            rb.angularVelocity = Vector3.zero;
 
             if (autoCorrector != null)
                 autoCorrector.enabled = wasAutoCorrectorEnabled;
@@ -158,11 +184,8 @@ void FixedUpdate()
     if (autoCorrector != null && autoCorrector.IsAutoCorrecting)
         return;
 
-    float move =
-        Input.GetAxis("Vertical") * currentSpeed * Time.fixedDeltaTime;
-
-    float turn =
-        Input.GetAxis("Horizontal") * turnSpeed * Time.fixedDeltaTime;
+    float move = Input.GetAxis("Vertical") * currentSpeed * dt;
+    float turn = Input.GetAxis("Horizontal") * turnSpeed * dt;
 
     rb.MovePosition(rb.position + transform.forward * move);
     rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turn, 0f));
