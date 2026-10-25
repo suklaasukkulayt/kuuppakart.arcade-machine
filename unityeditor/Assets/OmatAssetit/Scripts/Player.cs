@@ -126,6 +126,7 @@ public class Player : MonoBehaviour
 
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.maxDepenetrationVelocity = maxDepenetrationVelocity;
+        rb.maxAngularVelocity = 20f;
 
         if (FindFirstObjectByType<Speedometer>() != null)
         {
@@ -397,14 +398,30 @@ public class Player : MonoBehaviour
         commandedXZ = new Vector3(desired.x, 0f, desired.z);
         commandedVelocity = desired;
 
-        Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn, 0f);
+        Vector3 carUp = transform.up;
+        float yawRate = (turn / dt) * Mathf.Deg2Rad;
+        Vector3 angVel;
+
         if (grounded)
         {
-            Quaternion aligned = Quaternion.FromToRotation(rot * Vector3.up, hitCenter.normal) * rot;
-            rot = Quaternion.Slerp(rot, aligned, 1f - Mathf.Exp(-alignSharpness * dt));
-            rb.angularVelocity = Vector3.zero;
+            angVel = carUp * yawRate;
+
+            Vector3 axis = Vector3.Cross(carUp, hitCenter.normal);
+            float sinAngle = axis.magnitude;
+            if (sinAngle > 0.0001f)
+            {
+                float angle = Vector3.Angle(carUp, hitCenter.normal) * Mathf.Deg2Rad;
+                angVel += (axis / sinAngle) * (angle * alignSharpness);
+            }
         }
-        rb.MoveRotation(rot);
+        else
+        {
+            angVel = rb.angularVelocity;
+            angVel -= Vector3.Dot(angVel, carUp) * carUp;
+            angVel += carUp * yawRate;
+        }
+
+        rb.angularVelocity = angVel;
     }
 
     float ProbeStepUp(Vector3 moveFlat, float speedAbs, float dt, float groundY, float slope)
