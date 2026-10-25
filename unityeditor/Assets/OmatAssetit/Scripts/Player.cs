@@ -80,6 +80,20 @@ public class Player : MonoBehaviour
     public float lowObstacleHeight = 0.35f;
     public float blockedTimeLimit = 0.15f;
 
+    [Header("Slopes")]
+    public float slopeGravityFactor = 1f;
+    public float slopeHoldAcceleration = 2f;
+    public float maxRollBackSpeed = 8f;
+
+    [Header("Car and wall hits")]
+    public float carHitMinSpeed = 4f;
+    public float carBounceFactor = 0.6f;
+    public float carUpFactor = 0.4f;
+    public float carSpinMultiplier = 1.8f;
+    public float wallHardHitSpeed = 10f;
+    public float wallExtraBounce = 3f;
+    public float wallExtraSpin = 4f;
+
     private float blockedTimer = 0f;
     private Vector3 commandedVelocity;
     private readonly RaycastHit[] groundHits = new RaycastHit[8];
@@ -162,11 +176,14 @@ public class Player : MonoBehaviour
         if (isStunned || crashCooldownTimer > 0f)
             return;
 
+        CarIdentify otherCar = collision.collider.GetComponentInParent<CarIdentify>();
+        bool hitCar = otherCar != null;
+
         Rigidbody otherBody = collision.rigidbody;
         if (otherBody != null
             && !otherBody.isKinematic
             && otherBody.mass < rb.mass * lightObjectMassRatio
-            && collision.gameObject.GetComponent<CarIdentify>() == null)
+            && !hitCar)
         {
             return;
         }
@@ -185,14 +202,28 @@ public class Player : MonoBehaviour
         away.y = 0f;
         away = away.sqrMagnitude > 0.001f ? away.normalized : -transform.forward;
 
-        Vector3 otherVel = collision.rigidbody != null ? collision.rigidbody.linearVelocity : Vector3.zero;
+        Vector3 otherVel = Vector3.zero;
+        if (hitCar)
+        {
+            AICar ai = otherCar.GetComponent<AICar>();
+            if (ai != null)
+                otherVel = ai.CurrentVelocity;
+            else if (otherBody != null)
+                otherVel = otherBody.linearVelocity;
+        }
+        else if (otherBody != null)
+        {
+            otherVel = otherBody.linearVelocity;
+        }
+
         float intoWall = Mathf.Max(0f, Vector3.Dot(intendedVelocity - otherVel, -away));
         float impactSpeed = Mathf.Max(intoWall, Mathf.Abs(Vector3.Dot(collision.relativeVelocity, away)));
 
-        if (impactSpeed < crashMinSpeed)
+        float minSpeed = hitCar ? carHitMinSpeed : crashMinSpeed;
+        if (impactSpeed < minSpeed)
             return;
 
-        float severity = Mathf.InverseLerp(crashMinSpeed, crashFullSpeed, impactSpeed);
+        float severity = Mathf.InverseLerp(minSpeed, crashFullSpeed, impactSpeed);
 
         if (autoCorrector != null)
             autoCorrector.Suspended = true;
@@ -207,8 +238,22 @@ public class Player : MonoBehaviour
         commandedVelocity = Vector3.zero;
         blockedTimer = 0f;
 
-        rb.linearVelocity = away * impactSpeed * bounceFactor + Vector3.up * impactSpeed * upFactor;
-        rb.angularVelocity = Random.onUnitSphere * Mathf.Lerp(minSpin, maxSpin, severity);
+        float bounce = impactSpeed * (hitCar ? carBounceFactor : bounceFactor);
+        float up = impactSpeed * (hitCar ? carUpFactor : upFactor);
+        float spin = Mathf.Lerp(minSpin, maxSpin, severity);
+
+        if (hitCar)
+        {
+            spin *= carSpinMultiplier;
+        }
+        else if (impactSpeed >= wallHardHitSpeed)
+        {
+            bounce += wallExtraBounce * severity;
+            spin += wallExtraSpin * severity;
+        }
+
+        rb.linearVelocity = away * bounce + Vector3.up * up;
+        rb.angularVelocity = Random.onUnitSphere * spin;
     }
 
     void FixedUpdate()
@@ -272,19 +317,28 @@ public class Player : MonoBehaviour
         float input = Input.GetAxisRaw("Vertical");
         float turn = Input.GetAxis("Horizontal") * turnSpeed * dt;
 
-        UpdateForwardSpeed(input, dt);
-
         Vector3 flatForward = transform.forward;
         flatForward.y = 0f;
         flatForward = flatForward.sqrMagnitude > 0.0001f ? flatForward.normalized : Vector3.forward;
 
-        float dirSign = forwardSpeed >= 0f ? 1f : -1f;
-        Vector3 moveFlat = flatForward * dirSign;
-        float speedAbs = Mathf.Abs(forwardSpeed);
-
         RaycastHit hitCenter;
         bool grounded = ProbeGround(rb.position + Vector3.up * groundCheckHeight, groundCheckHeight + groundSnapDistance, out hitCenter)
                         && hitCenter.normal.y > Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad);
+
+        float slopeAccel = 0f;
+        if (grounded)
+        {
+            Vector3 gn = hitCenter.normal;
+            float slopeForward = -(gn.x * flatForward.x + gn.z * flatForward.z) / Mathf.Max(gn.y, 0.01f);
+            float sinSlope = slopeForward / Mathf.Sqrt(1f + slopeForward * slopeForward);
+            slopeAccel = -Physics.gravity.magnitude * sinSlope * slopeGravityFactor;
+        }
+
+        UpdateForwardSpeed(input, dt, slopeAccel);
+
+        float dirSign = forwardSpeed >= 0f ? 1f : -1f;
+        Vector3 moveFlat = flatForward * dirSign;
+        float speedAbs = Mathf.Abs(forwardSpeed);
 
         Vector3 vel = rb.linearVelocity;
         Vector3 desired;
@@ -356,7 +410,7 @@ public class Player : MonoBehaviour
         return found;
     }
 
-    void UpdateForwardSpeed(float input, float dt)
+    void UpdateForwardSpeed(float input, float dt, float slopeAccel)
     {
         float maxReverse = baseSpeed * reverseSpeedFactor;
         float accel = isBoosted ? boostAcceleration : acceleration;
@@ -389,6 +443,17 @@ public class Player : MonoBehaviour
         {
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, 0f, coastDeceleration * dt);
         }
+
+        if (slopeAccel != 0f)
+        {
+            bool idle = Mathf.Abs(input) <= 0.1f;
+            if (idle && Mathf.Abs(forwardSpeed) < 0.2f && Mathf.Abs(slopeAccel) < slopeHoldAcceleration)
+                forwardSpeed = 0f;
+            else
+                forwardSpeed += slopeAccel * dt;
+        }
+
+        forwardSpeed = Mathf.Max(forwardSpeed, -maxRollBackSpeed);
 
         if (forwardSpeed > currentMaxSpeed)
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, currentMaxSpeed, overspeedDeceleration * dt);

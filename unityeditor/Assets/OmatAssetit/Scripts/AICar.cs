@@ -26,6 +26,7 @@ public class AICar : MonoBehaviour
     private bool isStunned = false;
     private float stunTimer = 0f;
     private float currentSpeed = 0f;
+    public Vector3 CurrentVelocity => isStunned ? Vector3.zero : transform.forward * currentSpeed;
     public bool LapArmed { get; private set; } = false;
 
     public void ConsumeLap()

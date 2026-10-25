@@ -19,6 +19,8 @@ public class Speedometer : MonoBehaviour
     public float size = 380f;
     public Vector2 margin = new Vector2(40f, 40f);
     public bool leftSide = true;
+    public float labelRadiusFactor = 0.635f;
+    public float statusTextRaise = 8f;
 
     [Header("Colors")]
     public Color trackColor = new Color(0f, 0f, 0f, 0.55f);
@@ -110,7 +112,7 @@ public class Speedometer : MonoBehaviour
         unitLabel.color = new Color(1f, 1f, 1f, 0.7f);
 
         statusText = NewText("BoostStatus", root, 30, FontStyles.Bold, TextAlignmentOptions.Center);
-        statusText.rectTransform.anchoredPosition = new Vector2(0f, -radius * 0.32f - 100f);
+        statusText.rectTransform.anchoredPosition = new Vector2(0f, -radius * 0.32f - 100f + statusTextRaise);
         statusText.rectTransform.sizeDelta = new Vector2(size * 0.7f, 44f);
     }
 
@@ -188,7 +190,7 @@ public class Speedometer : MonoBehaviour
             {
                 TextMeshProUGUI t = NewText("Label" + v, root, 20, FontStyles.Normal, TextAlignmentOptions.Center);
                 t.rectTransform.sizeDelta = new Vector2(60f, 30f);
-                t.rectTransform.anchoredPosition = dir * (radius * 0.86f - 48f);
+                t.rectTransform.anchoredPosition = dir * (radius * labelRadiusFactor);
                 t.text = v.ToString("0");
                 t.color = new Color(1f, 1f, 1f, 0.75f);
             }
