@@ -84,18 +84,7 @@ public class Player : MonoBehaviour
     public float slopeGravityFactor = 1f;
     public float slopeHoldAcceleration = 2f;
     public float maxRollBackSpeed = 8f;
-
-    [Header("Boost on slopes")]
-    public float boostSlopeFactor = 0.1f;
-    [Range(0f, 1f)] public float boostMinSpeedFactor = 0.8f;
-
-    [Header("Step up")]
-    public float stepProbeReach = 0.5f;
-    public float stepUpSpeed = 4f;
-    public float stepProbeHalfWidth = 0.4f;
-    public string stepObstacleName = "rail";
-    public float stepMinHeight = 0.08f;
-    [Range(0.1f, 1f)] public float stepImpededRatio = 0.9f;
+    [Range(0f, 1f)] public float boostSlopeFactor = 0.1f;
 
     [Header("Car and wall hits")]
     public float carHitMinSpeed = 4f;
@@ -107,7 +96,6 @@ public class Player : MonoBehaviour
     public float wallExtraSpin = 4f;
 
     private float blockedTimer = 0f;
-    private float lastMoveRatio = 1f;
     private Vector3 commandedVelocity;
     private readonly RaycastHit[] groundHits = new RaycastHit[8];
 
@@ -126,7 +114,6 @@ public class Player : MonoBehaviour
 
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.maxDepenetrationVelocity = maxDepenetrationVelocity;
-        rb.maxAngularVelocity = 20f;
 
         if (FindFirstObjectByType<Speedometer>() != null)
         {
@@ -311,7 +298,6 @@ public class Player : MonoBehaviour
         {
             float along = Vector3.Dot(rb.linearVelocity, commandedVelocity / commandedMag);
             float ratio = along / commandedMag;
-            lastMoveRatio = ratio;
 
             if (ratio < blockedRatio)
             {
@@ -327,7 +313,6 @@ public class Player : MonoBehaviour
         else
         {
             blockedTimer = 0f;
-            lastMoveRatio = 1f;
         }
 
         float input = Input.GetAxisRaw("Vertical");
@@ -348,6 +333,7 @@ public class Player : MonoBehaviour
             float slopeForward = -(gn.x * flatForward.x + gn.z * flatForward.z) / Mathf.Max(gn.y, 0.01f);
             float sinSlope = slopeForward / Mathf.Sqrt(1f + slopeForward * slopeForward);
             slopeAccel = -Physics.gravity.magnitude * sinSlope * slopeGravityFactor;
+
             if (isBoosted)
                 slopeAccel *= boostSlopeFactor;
         }
@@ -381,10 +367,6 @@ public class Player : MonoBehaviour
             Vector3 moveDir = (moveFlat + Vector3.up * slope).normalized;
             desired = moveDir * speedAbs;
             vel = desired;
-
-            float stepVelocity = ProbeStepUp(moveFlat, speedAbs, dt, hitCenter.point.y, slope);
-            if (stepVelocity > vel.y)
-                vel.y = stepVelocity;
         }
         else
         {
@@ -398,87 +380,14 @@ public class Player : MonoBehaviour
         commandedXZ = new Vector3(desired.x, 0f, desired.z);
         commandedVelocity = desired;
 
-        Vector3 carUp = transform.up;
-        float yawRate = (turn / dt) * Mathf.Deg2Rad;
-        Vector3 angVel;
-
+        Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn, 0f);
         if (grounded)
         {
-            angVel = carUp * yawRate;
-
-            Vector3 axis = Vector3.Cross(carUp, hitCenter.normal);
-            float sinAngle = axis.magnitude;
-            if (sinAngle > 0.0001f)
-            {
-                float angle = Vector3.Angle(carUp, hitCenter.normal) * Mathf.Deg2Rad;
-                angVel += (axis / sinAngle) * (angle * alignSharpness);
-            }
+            Quaternion aligned = Quaternion.FromToRotation(rot * Vector3.up, hitCenter.normal) * rot;
+            rot = Quaternion.Slerp(rot, aligned, 1f - Mathf.Exp(-alignSharpness * dt));
+            rb.angularVelocity = Vector3.zero;
         }
-        else
-        {
-            angVel = rb.angularVelocity;
-            angVel -= Vector3.Dot(angVel, carUp) * carUp;
-            angVel += carUp * yawRate;
-        }
-
-        rb.angularVelocity = angVel;
-    }
-
-    float ProbeStepUp(Vector3 moveFlat, float speedAbs, float dt, float groundY, float slope)
-    {
-        if (speedAbs < 0.5f || moveFlat.sqrMagnitude < 0.01f)
-            return 0f;
-
-        if (lastMoveRatio >= stepImpededRatio)
-            return 0f;
-
-        float reach = stepProbeReach + speedAbs * dt;
-        float startHeight = maxStepHeight + 0.3f;
-        float farDistance = 1f + reach;
-
-        Vector3 center = rb.position + moveFlat * (1f + reach * 0.5f);
-        center.y = groundY + startHeight;
-        Vector3 half = new Vector3(stepProbeHalfWidth, 0.05f, reach * 0.5f);
-        Quaternion orientation = Quaternion.LookRotation(moveFlat, Vector3.up);
-
-        int count = Physics.BoxCastNonAlloc(center, half, Vector3.down, groundHits, orientation,
-                                            startHeight + 0.3f, groundMask, QueryTriggerInteraction.Ignore);
-
-        float topY = float.MinValue;
-        for (int i = 0; i < count; i++)
-        {
-            RaycastHit h = groundHits[i];
-            if (h.collider.attachedRigidbody != null)
-                continue;
-
-            if (!IsStepObstacle(h.collider))
-                continue;
-
-            if (h.point.y > topY)
-                topY = h.point.y;
-        }
-
-        if (topY == float.MinValue)
-            return 0f;
-
-        float expectedTop = groundY + Mathf.Max(slope, 0f) * farDistance;
-        float rise = topY - expectedTop;
-        if (rise < stepMinHeight || rise > maxStepHeight)
-            return 0f;
-
-        return Mathf.Min(stepUpSpeed, rise / 0.12f + 0.5f);
-    }
-
-    bool IsStepObstacle(Collider col)
-    {
-        if (string.IsNullOrEmpty(stepObstacleName))
-            return true;
-
-        if (col.gameObject.name.IndexOf(stepObstacleName, System.StringComparison.OrdinalIgnoreCase) >= 0)
-            return true;
-
-        Transform parent = col.transform.parent;
-        return parent != null && parent.name.IndexOf(stepObstacleName, System.StringComparison.OrdinalIgnoreCase) >= 0;
+        rb.MoveRotation(rot);
     }
 
     bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)
@@ -549,9 +458,6 @@ public class Player : MonoBehaviour
         }
 
         forwardSpeed = Mathf.Max(forwardSpeed, -maxRollBackSpeed);
-
-        if (isBoosted && input > 0.1f)
-            forwardSpeed = Mathf.Max(forwardSpeed, baseSpeed * boostMinSpeedFactor);
 
         if (forwardSpeed > currentMaxSpeed)
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, currentMaxSpeed, overspeedDeceleration * dt);

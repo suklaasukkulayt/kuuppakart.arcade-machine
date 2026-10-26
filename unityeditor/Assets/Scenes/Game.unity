@@ -16430,6 +16430,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 1343382165}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 522a332726338424a9a7da7796ce3440,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1343382166}
   m_SourcePrefab: {fileID: 100100000, guid: 522a332726338424a9a7da7796ce3440, type: 3}
 --- !u!1001 &1038554774
 PrefabInstance:
@@ -20590,9 +20594,13 @@ MonoBehaviour:
   slopeHoldAcceleration: 2
   maxRollBackSpeed: 8
   boostSlopeFactor: 0.1
+  boostMinSpeedFactor: 0.8
   stepProbeReach: 0.5
   stepUpSpeed: 4
   stepProbeHalfWidth: 0.4
+  stepObstacleName: rail
+  stepMinHeight: 0.08
+  stepImpededRatio: 0.9
   carHitMinSpeed: 4
   carBounceFactor: 0.6
   carUpFactor: 0.4
@@ -20667,7 +20675,7 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
-  m_CollisionDetection: 1
+  m_CollisionDetection: 2
 --- !u!114 &1343382159
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20825,6 +20833,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   lapsCompleted: 0
+--- !u!114 &1343382166
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1343382153}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38f79180b59c3f744ab29f5dd2ec6142, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerPhysicsDebug
+  logAirborneAfter: 0.15
+  logInterval: 0.5
 --- !u!1 &1347729614
 GameObject:
   m_ObjectHideFlags: 0
@@ -31948,7 +31970,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 504.62, y: -173}
+  m_AnchoredPosition: {x: 486, y: -172}
   m_SizeDelta: {x: 261.361, y: 111.361}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1987582174
