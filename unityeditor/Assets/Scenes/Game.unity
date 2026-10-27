@@ -6172,15 +6172,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.9832549
+      value: -0.97992474
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.18223555
+      value: -0.19936797
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: -21
+      value: -23
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -20584,16 +20584,17 @@ MonoBehaviour:
   groundSnapDistance: 0.4
   lookAhead: 1.4
   maxStepHeight: 0.5
-  maxSlopeAngle: 55
+  maxSlopeAngle: 60
   alignSharpness: 12
   maxDepenetrationVelocity: 3
   lightObjectMassRatio: 0.25
-  lowObstacleHeight: 0.35
-  blockedTimeLimit: 0.15
-  slopeGravityFactor: 1
-  slopeHoldAcceleration: 2
-  maxRollBackSpeed: 8
+  lowObstacleHeight: 0.5
+  blockedTimeLimit: 0.2
+  slopeGravityFactor: 2
+  slopeHoldAcceleration: 0.2
+  maxRollBackSpeed: 12
   boostSlopeFactor: 0
+  frontalCrashDot: 0.8
   carHitMinSpeed: 4
   carBounceFactor: 0.6
   carUpFactor: 0.4
@@ -20838,20 +20839,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 38f79180b59c3f744ab29f5dd2ec6142, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerPhysicsDebug
-  airborneGap: 0.05
-  logAirborneAfter: 0.15
-  logInterval: 0.5
-  rb: {fileID: 0}
-  col: {fileID: 0}
-  contactsThisStep: 0
-  contactsLastStep: 0
-  lastNames: 
-  airTime: 0
-  logTimer: 0
-  groundGap: -1
-  groundName: '-'
-  groundLayer: '-'
-  fps: 0
 --- !u!1 &1347729614
 GameObject:
   m_ObjectHideFlags: 0
@@ -32407,16 +32394,20 @@ PrefabInstance:
       value: roadStraightBridgeMid (1)
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.0846
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalPosition.x
       value: -297.22815
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -114.65
+      value: -114.48
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -293.23944
+      value: -293.66
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -32444,6 +32435,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400000, guid: 0aabc7039c172dd43b14775b8d9f464c, type: 3}
+      propertyPath: m_ConstrainProportionsScale
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
