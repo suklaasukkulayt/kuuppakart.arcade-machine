@@ -18,10 +18,11 @@ public class Tuomari : MonoBehaviour
     public TMP_Text lapsText;
     public TMP_Text parasIkinAikaText;
 
-    [Header("Victory Camera (when PLAYER wins)")]
+    [Header("Victory Camera")]
     public Transform victoryCamera;
-
     public float victoryCameraHeight = 15f;
+    public float victoryCameraTransitionDuration = 2.2f;
+    public float victoryCameraArcHeight = 2f;
 
     [Header("Return To Main Menu")]
     public float backToMenuDelay = 10f;
@@ -33,6 +34,8 @@ public class Tuomari : MonoBehaviour
     private float raceStartTime;
     private float previousLapTime;
     private const string BestTimeKey = "Ajopeli_BestTime";
+    private Coroutine victoryCameraRoutine;
+    private LookBackCamera lookBackCameraController;
 
     private void Start()
     {
@@ -150,7 +153,7 @@ public class Tuomari : MonoBehaviour
             Debug.Log($"WINNER: {winnerName}, Race time: {totalTimeString}");
 
             if (id.kind == CarKind.Player)
-                ShowAiGapCamera();
+                ShowVictoryCamera(id.transform);
 
             StartCoroutine(BackToMainMenuCountdown());
         }
@@ -276,14 +279,10 @@ public class Tuomari : MonoBehaviour
         return null;
     }
 
-    private void ShowAiGapCamera()
+    private void ShowVictoryCamera(Transform winnerTransform)
     {
-        Transform aiTransform = FindAiCarTransform();
-        if (aiTransform == null)
-        {
-            Debug.LogWarning("[Tuomari] AI car not found for victory camera.");
+        if (winnerTransform == null)
             return;
-        }
 
         Transform cam = victoryCamera != null ? victoryCamera : FindPlayerCameraTransform();
         if (cam == null)
@@ -292,21 +291,40 @@ public class Tuomari : MonoBehaviour
             return;
         }
 
+        if (victoryCameraRoutine != null)
+            StopCoroutine(victoryCameraRoutine);
+
+        lookBackCameraController = cam.GetComponentInParent<LookBackCamera>();
+        if (lookBackCameraController != null)
+            lookBackCameraController.enabled = false;
+
         cam.SetParent(null, true);
-        cam.position = aiTransform.position + Vector3.up * victoryCameraHeight;
-        cam.rotation = Quaternion.LookRotation(Vector3.down, aiTransform.forward);
+
+        Vector3 targetPosition = winnerTransform.position + Vector3.up * victoryCameraHeight;
+        Quaternion targetRotation = Quaternion.LookRotation(Vector3.down, winnerTransform.forward);
+        victoryCameraRoutine = StartCoroutine(AnimateVictoryCamera(cam, targetPosition, targetRotation));
     }
 
-    private Transform FindAiCarTransform()
+    private IEnumerator AnimateVictoryCamera(Transform cam, Vector3 targetPosition, Quaternion targetRotation)
     {
-        CarIdentify[] cars = Object.FindObjectsByType<CarIdentify>(FindObjectsSortMode.None);
-        foreach (var c in cars)
+        Vector3 startPosition = cam.position;
+        Quaternion startRotation = cam.rotation;
+        float duration = Mathf.Max(0.1f, victoryCameraTransitionDuration);
+        float elapsed = 0f;
+
+        while (elapsed < duration)
         {
-            if (c.kind == CarKind.AI)
-                return c.transform;
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = t * t * (3f - 2f * t);
+            Vector3 position = Vector3.Lerp(startPosition, targetPosition, eased);
+            position += Vector3.up * (Mathf.Sin(t * Mathf.PI) * victoryCameraArcHeight);
+            cam.SetPositionAndRotation(position, Quaternion.Slerp(startRotation, targetRotation, eased));
+            yield return null;
         }
 
-        return null;
+        cam.SetPositionAndRotation(targetPosition, targetRotation);
+        victoryCameraRoutine = null;
     }
 
     private Transform FindPlayerCameraTransform()

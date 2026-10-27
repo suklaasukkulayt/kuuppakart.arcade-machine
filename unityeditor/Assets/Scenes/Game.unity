@@ -34937,8 +34937,20 @@ MonoBehaviour:
   autoMirrorPosition: 1
   rearViewLocalPosition: {x: 0, y: 0, z: 0}
   rearViewPitchOffset: 10
-  firstPersonLocalPosition: {x: 0, y: 0.9, z: 0.6}
+  firstPersonLocalPosition: {x: 0, y: 0.9, z: 0.15}
   firstPersonLocalEulerAngles: {x: 0, y: 0, z: 0}
+  viewTransitionSpeed: 10
+  enableDrivingCameraMotion: 1
+  lateralAccelerationInfluence: 0.012
+  longitudinalAccelerationInfluence: 0.008
+  maximumPositionOffset: 0.12
+  turningRollMultiplier: 2
+  maximumRollAngle: 3
+  accelerationPitchMultiplier: 0.45
+  maximumPitchAngle: 2
+  speedBobAmplitude: 0.012
+  speedBobFrequency: 7
+  speedBobStartSpeed: 5
 --- !u!4 &1910146846 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3899520030807063256, guid: 299e7a1cb6456cf4fa6079cf5978df9b,
@@ -36136,6 +36148,8 @@ MonoBehaviour:
   parasIkinAikaText: {fileID: 1934935498}
   victoryCamera: {fileID: 2074171119}
   victoryCameraHeight: 15
+  victoryCameraTransitionDuration: 2.2
+  victoryCameraArcHeight: 2
   backToMenuDelay: 10
   mainMenuSceneName: StartScreen
 --- !u!1 &1972795441
