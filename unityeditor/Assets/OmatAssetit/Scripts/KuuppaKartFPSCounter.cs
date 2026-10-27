@@ -39,7 +39,7 @@ public sealed class KuuppaKartFpsCounter : MonoBehaviour
         int threshold = GetFpsThreshold();
         bool belowTarget = threshold > 0 && fps < threshold;
 
-        counterText.text = shownFps + " FPS";
+        counterText.text = "FPS: " + shownFps;
         counterText.color = belowTarget ? lowFpsColor : normalColor;
         elapsed = 0f;
         frameCount = 0;
