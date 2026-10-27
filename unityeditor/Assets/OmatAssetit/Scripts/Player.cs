@@ -53,6 +53,7 @@ public class Player : MonoBehaviour
     private float cooldownTimer = 0f;
     private bool isBoosted = false;
     private Rigidbody rb;
+    private Collider groundCollider;
     private bool isStunned = false;
     private float stunTimer = 0f;
     private bool writeBoostText = true;
@@ -87,6 +88,7 @@ public class Player : MonoBehaviour
     [Range(0f, 1f)] public float boostSlopeFactor = 0.1f;
 
     [Header("Car and wall hits")]
+    [Range(0.5f, 0.98f)] public float frontalCrashDot = 0.8f;
     public float carHitMinSpeed = 4f;
     public float carBounceFactor = 0.6f;
     public float carUpFactor = 0.4f;
@@ -96,12 +98,13 @@ public class Player : MonoBehaviour
     public float wallExtraSpin = 4f;
 
     private float blockedTimer = 0f;
-    private Vector3 commandedVelocity;
+    private float ignoreBlockingUntil = 0f;
     private readonly RaycastHit[] groundHits = new RaycastHit[8];
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        groundCollider = GetComponent<Collider>();
         normalConstraints = rb.constraints;
         autoCorrector = GetComponent<PlayerUprightAndShortcuts_AutoFallReset>();
 
@@ -174,6 +177,9 @@ public class Player : MonoBehaviour
         if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
             return;
 
+        if (!isStunned)
+            SuppressLowEdgeBounce(collision);
+
         if (isStunned || crashCooldownTimer > 0f)
             return;
 
@@ -189,19 +195,54 @@ public class Player : MonoBehaviour
             return;
         }
 
-        if (collision.collider.bounds.max.y < rb.position.y + lowObstacleHeight)
+        Vector3 flatForward = transform.forward;
+        flatForward.y = 0f;
+        if (flatForward.sqrMagnitude < 0.0001f)
             return;
+        flatForward.Normalize();
 
-        ContactPoint contact = collision.GetContact(0);
+        ContactPoint contact = default;
+        Vector3 away = Vector3.zero;
+        float bestFrontAlignment = -1f;
+        bool foundFrontalContact = false;
+        float obstacleHeightLimit = Mathf.Max(0f, lowObstacleHeight);
+        float minimumContactHeight = groundCollider != null ? groundCollider.bounds.min.y + obstacleHeightLimit : rb.position.y + obstacleHeightLimit;
 
-        if (contact.normal.y > groundNormalY)
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint candidate = collision.GetContact(i);
+            Vector3 candidateAway = candidate.normal;
+
+            Vector3 towardPlayer = rb.worldCenterOfMass - candidate.point;
+            if (Vector3.Dot(candidateAway, towardPlayer) < 0f)
+                candidateAway = -candidateAway;
+
+            if (candidateAway.y > groundNormalY)
+                continue;
+
+            if (candidate.point.y < minimumContactHeight)
+                continue;
+
+            Vector3 candidateAwayFlat = new Vector3(candidateAway.x, 0f, candidateAway.z);
+            if (candidateAwayFlat.sqrMagnitude < 0.001f)
+                continue;
+            candidateAwayFlat.Normalize();
+
+            float frontAlignment = Vector3.Dot(candidateAwayFlat, -flatForward);
+            if (frontAlignment < frontalCrashDot)
+                continue;
+
+            if (frontAlignment > bestFrontAlignment)
+            {
+                bestFrontAlignment = frontAlignment;
+                contact = candidate;
+                away = candidateAwayFlat;
+                foundFrontalContact = true;
+            }
+        }
+
+        if (!foundFrontalContact)
             return;
-
-        Vector3 away = contact.normal;
-        if (Vector3.Dot(away, rb.position - contact.point) < 0f)
-            away = -away;
-        away.y = 0f;
-        away = away.sqrMagnitude > 0.001f ? away.normalized : -transform.forward;
 
         Vector3 otherVel = Vector3.zero;
         if (hitCar)
@@ -236,7 +277,6 @@ public class Player : MonoBehaviour
         crashCooldownTimer = stunTimer + crashCooldown;
         forwardSpeed = 0f;
         commandedXZ = Vector3.zero;
-        commandedVelocity = Vector3.zero;
         blockedTimer = 0f;
 
         float bounce = impactSpeed * (hitCar ? carBounceFactor : bounceFactor);
@@ -255,6 +295,65 @@ public class Player : MonoBehaviour
 
         rb.linearVelocity = away * bounce + Vector3.up * up;
         rb.angularVelocity = Random.onUnitSphere * spin;
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing || isStunned)
+            return;
+
+        SuppressLowEdgeBounce(collision);
+    }
+
+    void SuppressLowEdgeBounce(Collision collision)
+    {
+        if (rb == null || groundCollider == null)
+            return;
+
+        if (collision.collider.GetComponentInParent<CarIdentify>() != null)
+            return;
+
+        Rigidbody otherBody = collision.rigidbody;
+        if (otherBody != null && !otherBody.isKinematic
+            && otherBody.mass < rb.mass * lightObjectMassRatio)
+            return;
+
+        float lowerBodyTop = groundCollider.bounds.min.y + Mathf.Max(0f, lowObstacleHeight);
+
+        bool lowSideContact = false;
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint contact = collision.GetContact(i);
+            if (contact.point.y > lowerBodyTop)
+                continue;
+
+            Vector3 normalTowardPlayer = contact.normal;
+            if (Vector3.Dot(normalTowardPlayer, rb.worldCenterOfMass - contact.point) < 0f)
+                normalTowardPlayer = -normalTowardPlayer;
+
+            if (normalTowardPlayer.y > groundNormalY)
+                continue;
+
+            lowSideContact = true;
+            break;
+        }
+
+        if (!lowSideContact)
+            return;
+        
+        ignoreBlockingUntil = Mathf.Max(ignoreBlockingUntil, Time.time + Mathf.Max(0f, blockedTimeLimit));
+        blockedTimer = 0f;
+        Vector3 velocity = rb.linearVelocity;
+        if (velocity.y > 0f)
+        {
+            velocity.y = 0f;
+            rb.linearVelocity = velocity;
+        }
+
+        Vector3 angular = rb.angularVelocity;
+        angular.x = 0f;
+        angular.z = 0f;
+        rb.angularVelocity = angular;
     }
 
     void FixedUpdate()
@@ -288,31 +387,8 @@ public class Player : MonoBehaviour
             forwardSpeed = 0f;
             intendedVelocity = Vector3.zero;
             commandedXZ = Vector3.zero;
-            commandedVelocity = Vector3.zero;
             blockedTimer = 0f;
             return;
-        }
-
-        float commandedMag = commandedVelocity.magnitude;
-        if (commandedMag > 1f)
-        {
-            float along = Vector3.Dot(rb.linearVelocity, commandedVelocity / commandedMag);
-            float ratio = along / commandedMag;
-
-            if (ratio < blockedRatio)
-            {
-                blockedTimer += dt;
-                if (blockedTimer >= blockedTimeLimit)
-                    forwardSpeed *= Mathf.Clamp01(ratio);
-            }
-            else
-            {
-                blockedTimer = 0f;
-            }
-        }
-        else
-        {
-            blockedTimer = 0f;
         }
 
         float input = Input.GetAxisRaw("Vertical");
@@ -323,8 +399,8 @@ public class Player : MonoBehaviour
         flatForward = flatForward.sqrMagnitude > 0.0001f ? flatForward.normalized : Vector3.forward;
 
         RaycastHit hitCenter;
-        bool grounded = ProbeGround(rb.position + Vector3.up * groundCheckHeight, groundCheckHeight + groundSnapDistance, out hitCenter)
-                        && hitCenter.normal.y > Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad);
+        bool grounded = ProbeGround(rb.position + Vector3.up * groundCheckHeight, groundCheckHeight + groundSnapDistance, out hitCenter) && hitCenter.normal.y > Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad) && IsGroundWithinSnapDistance(hitCenter);
+        UpdateBlockedSpeed(dt, grounded);
 
         float slopeAccel = 0f;
         if (grounded)
@@ -355,18 +431,20 @@ public class Player : MonoBehaviour
             float slope = slopeNormal;
 
             RaycastHit hitAhead;
-            if (ProbeGround(rb.position + moveFlat * lookAhead + Vector3.up * groundCheckHeight, groundCheckHeight + 1f, out hitAhead))
+            if (ProbeGround(rb.position + moveFlat * lookAhead + Vector3.up * groundCheckHeight,
+                            groundCheckHeight + 1f, out hitAhead))
             {
                 float dy = hitAhead.point.y - hitCenter.point.y;
-                if (dy <= maxStepHeight)
-                    slope = dy / lookAhead;
+                if (Mathf.Abs(dy) <= maxStepHeight)
+                    slope = dy / Mathf.Max(lookAhead, 0.01f);
             }
 
             slope = Mathf.Clamp(slope, -maxTan, maxTan);
 
             Vector3 moveDir = (moveFlat + Vector3.up * slope).normalized;
             desired = moveDir * speedAbs;
-            vel = desired;
+            vel.x = desired.x;
+            vel.z = desired.z;
         }
         else
         {
@@ -378,7 +456,6 @@ public class Player : MonoBehaviour
         rb.linearVelocity = vel;
         intendedVelocity = desired;
         commandedXZ = new Vector3(desired.x, 0f, desired.z);
-        commandedVelocity = desired;
 
         Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn, 0f);
         if (grounded)
@@ -388,6 +465,43 @@ public class Player : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
         rb.MoveRotation(rot);
+    }
+
+    bool IsGroundWithinSnapDistance(RaycastHit hit)
+    {
+        if (groundCollider == null)
+            return true;
+
+        float colliderBottomY = groundCollider.bounds.min.y;
+        return hit.point.y >= colliderBottomY - Mathf.Max(0f, groundSnapDistance);
+    }
+
+    void UpdateBlockedSpeed(float dt, bool grounded)
+    {
+        if (!grounded || Time.time < ignoreBlockingUntil || commandedXZ.sqrMagnitude < 1f)
+        {
+            blockedTimer = 0f;
+            return;
+        }
+
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        float commandedMagnitude = commandedXZ.magnitude;
+        float actualAlongCommand = Vector3.Dot(horizontalVelocity, commandedXZ / commandedMagnitude);
+        float ratio = actualAlongCommand / commandedMagnitude;
+        float blockingThreshold = blockedRatio;
+        if (ratio < blockingThreshold)
+        {
+            blockedTimer += dt;
+            if (blockedTimer >= blockedTimeLimit)
+            {
+                forwardSpeed *= Mathf.Clamp01(ratio);
+                blockedTimer = 0f;
+            }
+        }
+        else
+        {
+            blockedTimer = 0f;
+        }
     }
 
     bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)

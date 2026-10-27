@@ -20593,14 +20593,7 @@ MonoBehaviour:
   slopeGravityFactor: 1
   slopeHoldAcceleration: 2
   maxRollBackSpeed: 8
-  boostSlopeFactor: 0.1
-  boostMinSpeedFactor: 0.8
-  stepProbeReach: 0.5
-  stepUpSpeed: 4
-  stepProbeHalfWidth: 0.4
-  stepObstacleName: rail
-  stepMinHeight: 0.08
-  stepImpededRatio: 0.9
+  boostSlopeFactor: 0
   carHitMinSpeed: 4
   carBounceFactor: 0.6
   carUpFactor: 0.4
@@ -20845,8 +20838,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 38f79180b59c3f744ab29f5dd2ec6142, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerPhysicsDebug
+  airborneGap: 0.05
   logAirborneAfter: 0.15
   logInterval: 0.5
+  rb: {fileID: 0}
+  col: {fileID: 0}
+  contactsThisStep: 0
+  contactsLastStep: 0
+  lastNames: 
+  airTime: 0
+  logTimer: 0
+  groundGap: -1
+  groundName: '-'
+  groundLayer: '-'
+  fps: 0
 --- !u!1 &1347729614
 GameObject:
   m_ObjectHideFlags: 0
