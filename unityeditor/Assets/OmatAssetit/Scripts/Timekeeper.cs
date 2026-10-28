@@ -7,6 +7,7 @@ public class Tuomari : MonoBehaviour
 {
     [Header("Winner Text")]
     public TMP_Text resultText;
+    public GameObject victoryPanel;
 
     [Header("Lap Times")]
     public int kierrostenMaara = 3;
@@ -16,7 +17,18 @@ public class Tuomari : MonoBehaviour
 
     [Header("Final Result")]
     public TMP_Text lapsText;
+    public TMP_Text racetimeText;
     public TMP_Text parasIkinAikaText;
+    public ParticleSystem leftConfetti;
+    public ParticleSystem rightConfetti;
+
+    [ContextMenu("Aktivoi pelkkä räjähdys")]
+    public void LaunchConfettiOnly()
+    {
+        if (leftConfetti != null)  leftConfetti.Play();
+        if (rightConfetti != null) rightConfetti.Play();
+        Debug.Log("Konfetit laukaistu ContextMenu-aktivoinnilla!");
+    }
 
     [Header("Victory Camera")]
     public Transform victoryCamera;
@@ -142,8 +154,16 @@ public class Tuomari : MonoBehaviour
             if (lapsText == null)
                 lapsText = FindLapsText();
 
-            if (lapsText != null)
-                lapsText.text = $"Race time: {totalTimeString}";
+            if (racetimeText != null)
+                racetimeText.text = $"Race time: {totalTimeString}";
+            
+            if (victoryPanel != null)
+            {
+                victoryPanel.SetActive(true);
+            }
+
+            if (leftConfetti != null)  leftConfetti.Play();
+            if (rightConfetti != null) rightConfetti.Play();
 
             UpdateBestTime(totalTime);
 
