@@ -1723,6 +1723,8 @@ MonoBehaviour:
   - {fileID: 172186449}
   speed: 10
   rotationSpeed: 5
+  acceleration: 6
+  topSpeedAccelerationFactor: 0.35
   easyModeSpeedMultiplier: 0.85
   hardModeSpeedMultiplier: 1.15
   easyModeStartOffsetBack: 6
@@ -11296,11 +11298,55 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Player
   baseSpeed: 10
   turnSpeed: 130
+  acceleration: 7
+  topSpeedAccelerationFactor: 0.35
+  coastDeceleration: 3.5
+  brakeDeceleration: 18
+  reverseSpeedFactor: 0.4
+  reverseAcceleration: 5
+  overspeedDeceleration: 5
   hardModeSpeedMultiplier: 0.9
+  crashMinSpeed: 7
+  crashFullSpeed: 16
+  minStunTime: 0.4
+  maxStunTime: 1
+  crashCooldown: 0.5
+  groundNormalY: 0.7
+  bounceFactor: 0.25
+  upFactor: 0.15
+  minSpin: 1.5
+  maxSpin: 6
   boostSpeed: 15
+  boostAcceleration: 14
   boostDuration: 1.5
   boostCooldown: 7
   uiText: {fileID: 1987582174}
+  blockedRatio: 0.7
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  groundCheckHeight: 1
+  groundSnapDistance: 0.4
+  lookAhead: 1.4
+  maxStepHeight: 0.5
+  maxSlopeAngle: 55
+  alignSharpness: 12
+  maxDepenetrationVelocity: 3
+  lightObjectMassRatio: 0.25
+  lowObstacleHeight: 0.35
+  blockedTimeLimit: 0.15
+  slopeGravityFactor: 1
+  slopeHoldAcceleration: 2
+  maxRollBackSpeed: 8
+  boostSlopeFactor: 0.1
+  frontalCrashDot: 0.8
+  carHitMinSpeed: 4
+  carBounceFactor: 0.6
+  carUpFactor: 0.4
+  carSpinMultiplier: 1.8
+  wallHardHitSpeed: 10
+  wallExtraBounce: 3
+  wallExtraSpin: 4
 --- !u!4 &1343382155 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 522a332726338424a9a7da7796ce3440,
@@ -15867,14 +15913,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tuomari
   resultText: {fileID: 1758085783}
+  victoryPanel: {fileID: 0}
   kierrostenMaara: 3
   kierros1Text: {fileID: 0}
   kierros2Text: {fileID: 0}
   kierros3Text: {fileID: 0}
   lapsText: {fileID: 0}
+  racetimeText: {fileID: 0}
   parasIkinAikaText: {fileID: 0}
   victoryCamera: {fileID: 0}
   victoryCameraHeight: 15
+  victoryCameraTransitionDuration: 2.2
+  victoryCameraArcHeight: 2
+  victoryCameraFollowSpeed: 7
   backToMenuDelay: 10
   mainMenuSceneName: StartScreen
 --- !u!4 &1974355557 stripped
