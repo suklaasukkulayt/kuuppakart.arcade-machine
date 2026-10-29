@@ -23,7 +23,7 @@ public static class KuuppaKartGraphicsSettings
 
     private static readonly int[] FrameRateOptions = { 30, 45, 60, 90, 120, -1 };
 
-    public static int CurrentPreset => Mathf.Clamp(PlayerPrefs.GetInt(PresetKey, (int)GraphicsPreset.Potato), 0, 3);
+    public static int CurrentPreset => Mathf.Clamp(PlayerPrefs.GetInt(PresetKey, (int)GraphicsPreset.High), 0, 3);
     public static int FrameRateLimit => PlayerPrefs.GetInt(FrameRateKey, 60);
     public static bool VSyncEnabled => PlayerPrefs.GetInt(VSyncKey, 0) != 0;
     public static bool FpsCounterEnabled => PlayerPrefs.GetInt(FpsCounterKey, 0) != 0;
