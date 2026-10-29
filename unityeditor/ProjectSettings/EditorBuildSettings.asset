@@ -6,13 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/StartScreen.unity
-    guid: 63cb53eb09955764db88321040bc775b
-  - enabled: 1
-    path: Assets/Scenes/DifficultySelect.unity
-    guid: 5eced0d87448b914d8763139ebf2eca6
-  - enabled: 1
-    path: Assets/Scenes/Game.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Racing Starter Kit/RSK Assets/Scenes/SampleScene.unity
+    guid: adc28652a668a9646b0352d63f41b808
   m_configObjects: {}
-  m_UseUCBPForAssetBundles: 0
