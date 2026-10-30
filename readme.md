@@ -31,6 +31,18 @@ Showcase video: [YouTube](https://youtube.com/shorts/bmzxHVc_Kl4?feature=share)
 <img width="1080" height="1835" alt="Arcade machine" src="https://github.com/user-attachments/assets/11578296-3ea8-43e6-bff5-054fce52a662" />  
 Firmware and pinout for RFID reader can be found [here](./rfid_reader_firmware.ino)
 
+### Arcade Machine Features:
+- Reused old laptop
+- A speaker 
+- RGB lights
+- Decorations 
+- A racing wheel
+- A RFID Card reader
+- A self made Unity driving game 
+- Made from scraps
+- And more!
+
+Laptop has Linux Mint as the OS and it uses the AntiMicroX app(from Discover store) to convert controller to keyboard.
 
 ### Arcade machine dimensions(cardboard):  
 #### BASE (without display):  
