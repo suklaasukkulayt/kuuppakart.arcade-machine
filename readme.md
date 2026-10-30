@@ -20,7 +20,7 @@ I made this game in coding class a while back and now I updated it for the DIY A
 ## DIY Arcade Machine:  
 **Made by** me and [@MakkonenHugo](https://github.com/MakkonenHugo).  
 **More info** [**here**](https://stardance.hackclub.com/projects/30991)!  
-More info coming soon...  
+Required materials: [materials.csv](./materials.csv)  
 
 ### Arcade machine dimensions:  
 #### BASE (without display):  
