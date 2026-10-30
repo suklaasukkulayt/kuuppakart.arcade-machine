@@ -19,6 +19,7 @@ I made this game in coding class a while back and now I updated it for the DIY A
 
 ## DIY Arcade Machine:  
 **Made by** me and [@MakkonenHugo](https://github.com/MakkonenHugo).  
+This machine **made from** **just scrap** I found around the house, that's why the part list is super weird, and you aren't really supposed to buy anything I have linked. **Use your creativity!**
 **More info** [**here**](https://stardance.hackclub.com/projects/30991)!  
 Required materials: [materials.csv](./materials.csv)  
 This 3D print is used for the locking mechanism: [Sliding Lock | Locking Latch in MakerWorld](https://makerworld.com/en/models/1879613-sliding-lock-locking-latch) 
