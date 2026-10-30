@@ -17,6 +17,10 @@ I made this game in coding class a while back and now I updated it for the DIY A
 - Pause menu with graphics settings
 - And more!
 
+Showcase video (bad video quality): [YouTube](https://youtu.be/9THDBAbQRP8)
+<img width="1893" height="1005" alt="KuuppaKart screenshot" src="https://github.com/user-attachments/assets/fbbb87d8-f4ce-4583-9c92-81851f48d486" />
+
+
 ## DIY Arcade Machine:  
 **Made by** me and [@MakkonenHugo](https://github.com/MakkonenHugo).  
 This machine **made from** **just scrap** I found around the house, that's why the part list is super weird, and you aren't really supposed to buy anything I have linked. **Use your creativity!**  
@@ -24,7 +28,7 @@ This machine **made from** **just scrap** I found around the house, that's why t
 Required materials: [materials.csv](./materials.csv)  
 This 3D print is used for the locking mechanism: [Sliding Lock | Locking Latch in MakerWorld](https://makerworld.com/en/models/1879613-sliding-lock-locking-latch) 
 
-### Arcade machine dimensions:  
+### Arcade machine dimensions(cardboard):  
 #### BASE (without display):  
 Width: 500mm  
 Depth: 330mm  
