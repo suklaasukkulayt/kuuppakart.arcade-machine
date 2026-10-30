@@ -26,7 +26,10 @@ Showcase video (bad video quality): [YouTube](https://youtu.be/9THDBAbQRP8)
 This machine **made from** **just scrap** I found around the house, that's why the part list is super weird, and you aren't really supposed to buy anything I have linked. **Use your creativity!**  
 **More info** about the project can be found [**here**](https://stardance.hackclub.com/projects/30991)!  
 Required materials: [materials.csv](./materials.csv)  
-This 3D print is used for the locking mechanism: [Sliding Lock | Locking Latch in MakerWorld](https://makerworld.com/en/models/1879613-sliding-lock-locking-latch) 
+This 3D print is used for the locking mechanism: [Sliding Lock | Locking Latch in MakerWorld](https://makerworld.com/en/models/1879613-sliding-lock-locking-latch)  
+Showcase video: [YouTube](https://youtube.com/shorts/bmzxHVc_Kl4?feature=share)
+<img width="1080" height="1835" alt="Arcade machine" src="https://github.com/user-attachments/assets/11578296-3ea8-43e6-bff5-054fce52a662" />
+
 
 ### Arcade machine dimensions(cardboard):  
 #### BASE (without display):  
