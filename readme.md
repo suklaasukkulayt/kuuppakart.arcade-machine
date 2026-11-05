@@ -22,6 +22,7 @@ Showcase video (bad video quality): [YouTube](https://youtu.be/9THDBAbQRP8)
 
 
 ## DIY Arcade Machine:  
+I CAN'T REALLY MAKE A .STEP FOR THIS BECAUSE THIS DOESN'T HAVE A 3D DESIGN(this isn't made in any CAD software)
 **Made by** me and [@MakkonenHugo](https://github.com/MakkonenHugo).  
 This machine **made from** **just scrap** I found around the house, that's why the part list is super weird, and you aren't really supposed to buy anything I have linked. **Use your creativity!**  
 **More info** about the project can be found [**here**](https://stardance.hackclub.com/projects/30991)!  
