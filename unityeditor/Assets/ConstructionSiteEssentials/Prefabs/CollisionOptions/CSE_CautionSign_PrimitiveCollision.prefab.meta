@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4e9d386bd2800364788a7bf47da407d2
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408282
+  packageName: Construction Site Essentials
+  packageVersion: 1.1.0
+  assetPath: Assets/ConstructionSiteEssentials/Prefabs/CollisionOptions/CSE_CautionSign_PrimitiveCollision.prefab
+  uploadId: 1022554

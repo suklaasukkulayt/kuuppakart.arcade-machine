@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 476d5301b395a7a4ea4808bed0dcd973
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408282
+  packageName: Construction Site Essentials
+  packageVersion: 1.1.0
+  assetPath: Assets/ConstructionSiteEssentials/Prefabs/CollisionOptions/CSE_Toolbox_PrimitiveCollision.prefab
+  uploadId: 1022554

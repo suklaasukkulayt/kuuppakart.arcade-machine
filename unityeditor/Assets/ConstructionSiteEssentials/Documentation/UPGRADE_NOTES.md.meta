@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f026702e5447e614c8b8b6f09b1fbfce
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408282
+  packageName: Construction Site Essentials
+  packageVersion: 1.1.0
+  assetPath: Assets/ConstructionSiteEssentials/Documentation/UPGRADE_NOTES.md
+  uploadId: 1022554

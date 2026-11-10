@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e4bbcb974eafba147b7e2fdc7413fc45
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408282
+  packageName: Construction Site Essentials
+  packageVersion: 1.1.0
+  assetPath: Assets/ConstructionSiteEssentials/Documentation/UPGRADE_VALIDATION.md
+  uploadId: 1022554

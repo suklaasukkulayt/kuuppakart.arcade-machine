@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 451b6a25c53363c4a8aec48cbfc33dd7
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 408282
+  packageName: Construction Site Essentials
+  packageVersion: 1.1.0
+  assetPath: Assets/ConstructionSiteEssentials/Prefabs/CollisionOptions/CSE_PortableWorkLight_PrimitiveCollision.prefab
+  uploadId: 1022554
