@@ -1,5 +1,9 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Barmetler.RoadSystem.Runtime.csproj" />
+  <Project Path="Barmetler.RoadSystem.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Barmetler.RoadSystem.Editor.Tests.csproj" />
+  <Project Path="Barmetler.RoadSystem.Runtime.Tests.csproj" />
   <Project Path="Polyperfect.Universal.csproj" />
 </Solution>

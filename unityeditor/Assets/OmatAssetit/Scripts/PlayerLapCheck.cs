@@ -21,7 +21,7 @@ public class PelaajanKierrosTarkastus : MonoBehaviour
     void Awake()
     {
         ResetLap();
-        UpdateLapsTextDisplay();
+        //UpdateLapsTextDisplay();
     }
 
     public void UpdateLapsText(int currentLap, int maxLap)

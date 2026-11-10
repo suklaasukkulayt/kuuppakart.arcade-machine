@@ -1263,7 +1263,7 @@ MonoBehaviour:
   selectedColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   unselectedColor: {r: 0, g: 0.03137255, b: 1, a: 1}
   lockedColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  gameSceneName: Game
+  gameSceneName: KKartOG
 --- !u!4 &1331006987
 Transform:
   m_ObjectHideFlags: 0
