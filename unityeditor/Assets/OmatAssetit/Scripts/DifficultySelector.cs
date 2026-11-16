@@ -1,190 +1,170 @@
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 
+[System.Serializable]
+public class LevelInfo
+{
+    public string displayName;
+    public Sprite image;
+    [TextArea(2, 5)] public string description;
+    public string sceneName;
+}
+
 public class DifficultySelector : MonoBehaviour
 {
-    private enum Stage { Difficulty, Fov, CameraView }
+    private enum Stage { Level, Difficulty, Fov, CameraView }
 
-    [Header("Difficulty texts")]
-    public TMP_Text easyText;
+    [Header("Levels")]
+    public LevelInfo[] levels;
+    public TMP_Text levelNameText;
+    public Image levelImage;
+    public TMP_Text levelDescriptionText;
     public TMP_Text normalText;
-    public TMP_Text hardText;
-
     [Header("FOV text")]
     public TMP_Text fovText;
     public float fovStep = 5f;
     public float minFov = 40f;
     public float maxFov = 110f;
     public float startingFov = 80f;
-
-    [Header("Camera view texts")]
     public TMP_Text thirdPersonText;
-    public TMP_Text firstPersonText;
 
     [Header("Color settings")]
     public Color selectedColor = Color.yellow;
     public Color unselectedColor = Color.white;
     public Color lockedColor = Color.gray;
-
-    [Header("Next scene")]
-    public string gameSceneName = "Game";
-
-    private readonly Difficulty[] difficultyOptions = { Difficulty.Easy, Difficulty.Normal, Difficulty.Hard };
+    public string gameSceneName = "KKartOG";
+    private static readonly Difficulty[] DifficultyOptions = { Difficulty.Easy, Difficulty.Normal, Difficulty.Hard };
+    private static readonly string[] DifficultyNames = { "EASY", "NORMAL", "HARD" };
+    private Stage stage = Stage.Level;
+    private int levelIndex = 0;
     private int difficultyIndex = 1;
-
-    private readonly bool[] cameraOptions = { false, true };
-    private int cameraIndex = 0;
-
-    private Stage stage = Stage.Difficulty;
+    private bool firstPerson = false;
     private float currentFov;
 
     void Start()
     {
         currentFov = startingFov;
-        UpdateDifficultyVisuals();
-        UpdateFovVisuals();
-        UpdateCameraViewVisuals();
+        RefreshAll();
     }
 
     void Update()
     {
-        if (stage == Stage.Difficulty)
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                difficultyIndex = (difficultyIndex - 1 + difficultyOptions.Length) % difficultyOptions.Length;
-                UpdateDifficultyVisuals();
-            }
-            else if (Input.GetKeyDown(KeyCode.D))
-            {
-                difficultyIndex = (difficultyIndex + 1) % difficultyOptions.Length;
-                UpdateDifficultyVisuals();
-            }
-            else if (Input.GetKeyDown(KeyCode.W))
-            {
-                ConfirmDifficulty();
-            }
-        }
-        else if (stage == Stage.Fov)
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                ChangeFov(-fovStep);
-            }
-            else if (Input.GetKeyDown(KeyCode.D))
-            {
-                ChangeFov(fovStep);
-            }
-            else if (Input.GetKeyDown(KeyCode.W))
-            {
-                ConfirmFov();
-            }
-        }
-        else
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                cameraIndex = (cameraIndex - 1 + cameraOptions.Length) % cameraOptions.Length;
-                UpdateCameraViewVisuals();
-            }
-            else if (Input.GetKeyDown(KeyCode.D))
-            {
-                cameraIndex = (cameraIndex + 1) % cameraOptions.Length;
-                UpdateCameraViewVisuals();
-            }
-            else if (Input.GetKeyDown(KeyCode.W))
-            {
-                ConfirmCameraViewAndStart();
-            }
-        }
+        if (Input.GetKeyDown(KeyCode.A)) Change(-1);
+        else if (Input.GetKeyDown(KeyCode.D)) Change(1);
+        else if (Input.GetKeyDown(KeyCode.W)) Confirm();
+        else if (Input.GetKeyDown(KeyCode.S)) Back();
     }
 
-    private void UpdateDifficultyVisuals()
+    private void Change(int dir)
     {
-        bool stageActive = stage == Stage.Difficulty;
-        SetTextState(easyText, difficultyOptions[difficultyIndex] == Difficulty.Easy, stageActive);
-        SetTextState(normalText, difficultyOptions[difficultyIndex] == Difficulty.Normal, stageActive);
-        SetTextState(hardText, difficultyOptions[difficultyIndex] == Difficulty.Hard, stageActive);
+        switch (stage)
+        {
+            case Stage.Level:
+                if (levels == null || levels.Length == 0) return;
+                levelIndex = (levelIndex + dir + levels.Length) % levels.Length;
+                break;
+            case Stage.Difficulty:
+                difficultyIndex = (difficultyIndex + dir + DifficultyOptions.Length) % DifficultyOptions.Length;
+                break;
+            case Stage.Fov:
+                currentFov = Mathf.Clamp(currentFov + dir * fovStep, minFov, maxFov);
+                break;
+            case Stage.CameraView:
+                firstPerson = !firstPerson;
+                break;
+        }
+        RefreshAll();
     }
 
-    private void ConfirmDifficulty()
+    private void Confirm()
     {
         EnsureDifficultyManager();
-        DifficultyManager.Instance.SelectedDifficulty = difficultyOptions[difficultyIndex];
 
-        stage = Stage.Fov;
-        UpdateDifficultyVisuals();
-        UpdateFovVisuals();
-    }
-
-    private void ChangeFov(float delta)
-    {
-        currentFov = Mathf.Clamp(currentFov + delta, minFov, maxFov);
-        UpdateFovVisuals();
-    }
-
-    private void UpdateFovVisuals()
-    {
-        if (fovText == null) return;
-
-        fovText.text = $"FOV: {currentFov:F0}";
-
-        if (stage == Stage.Fov)
+        switch (stage)
         {
-            fovText.color = selectedColor;
-            fovText.fontStyle = FontStyles.Bold | FontStyles.Underline;
+            case Stage.Level:
+                stage = Stage.Difficulty;
+                break;
+            case Stage.Difficulty:
+                DifficultyManager.Instance.SelectedDifficulty = DifficultyOptions[difficultyIndex];
+                stage = Stage.Fov;
+                break;
+            case Stage.Fov:
+                DifficultyManager.Instance.SelectedFov = currentFov;
+                stage = Stage.CameraView;
+                break;
+            case Stage.CameraView:
+                DifficultyManager.Instance.SelectedDifficulty = DifficultyOptions[difficultyIndex];
+                DifficultyManager.Instance.SelectedFov = currentFov;
+                DifficultyManager.Instance.FirstPerson = firstPerson;
+                StartGame();
+                return;
         }
-        else if (stage == Stage.CameraView)
+        RefreshAll();
+    }
+
+    private void Back()
+    {
+        if (stage == Stage.Level) return;
+        stage--;
+        RefreshAll();
+    }
+
+    private void StartGame()
+    {
+        string scene = gameSceneName;
+        if (levels != null && levels.Length > 0 && !string.IsNullOrEmpty(levels[levelIndex].sceneName))
+            scene = levels[levelIndex].sceneName;
+
+        SceneManager.LoadScene(scene);
+    }
+
+    private void RefreshAll()
+    {
+        if (levels != null && levels.Length > 0)
         {
-            fovText.color = lockedColor;
-            fovText.fontStyle = FontStyles.Normal;
+            LevelInfo level = levels[levelIndex];
+            if (levelNameText != null) levelNameText.text = level.displayName;
+            if (levelDescriptionText != null) levelDescriptionText.text = level.description;
+            if (levelImage != null)
+            {
+                levelImage.sprite = level.image;
+                levelImage.enabled = level.image != null;
+            }
         }
-        else
-        {
-            fovText.color = unselectedColor;
-            fovText.fontStyle = FontStyles.Normal;
-        }
+        StyleText(levelNameText, Stage.Level);
+
+        if (normalText != null) normalText.text = DifficultyNames[difficultyIndex];
+        StyleText(normalText, Stage.Difficulty);
+
+        if (fovText != null) fovText.text = $"FOV: {currentFov:F0}";
+        StyleText(fovText, Stage.Fov);
+
+        if (thirdPersonText != null) thirdPersonText.text = firstPerson ? "First Person" : "Third Person";
+        StyleText(thirdPersonText, Stage.CameraView);
     }
 
-    private void ConfirmFov()
-    {
-        EnsureDifficultyManager();
-        DifficultyManager.Instance.SelectedFov = currentFov;
-
-        stage = Stage.CameraView;
-        UpdateFovVisuals();
-        UpdateCameraViewVisuals();
-    }
-
-
-    private void UpdateCameraViewVisuals()
-    {
-        bool stageActive = stage == Stage.CameraView;
-        SetTextState(thirdPersonText, cameraOptions[cameraIndex] == false, stageActive);
-        SetTextState(firstPersonText, cameraOptions[cameraIndex] == true, stageActive);
-    }
-
-    private void ConfirmCameraViewAndStart()
-    {
-        EnsureDifficultyManager();
-        DifficultyManager.Instance.FirstPerson = cameraOptions[cameraIndex];
-        SceneManager.LoadScene(gameSceneName);
-    }
-
-    private void SetTextState(TMP_Text text, bool isCurrentSelection, bool stageActive)
+    private void StyleText(TMP_Text text, Stage owner)
     {
         if (text == null) return;
 
-        if (!stageActive)
+        if (stage == owner)
         {
-            text.color = isCurrentSelection ? selectedColor : lockedColor;
-            text.fontStyle = isCurrentSelection ? FontStyles.Bold : FontStyles.Normal;
-            return;
+            text.color = selectedColor;
+            text.fontStyle = FontStyles.Bold | FontStyles.Underline;
         }
-
-        text.color = isCurrentSelection ? selectedColor : unselectedColor;
-        text.fontStyle = isCurrentSelection ? (FontStyles.Bold | FontStyles.Underline) : FontStyles.Normal;
+        else if (stage > owner)
+        {
+            text.color = lockedColor;
+            text.fontStyle = FontStyles.Normal;
+        }
+        else
+        {
+            text.color = unselectedColor;
+            text.fontStyle = FontStyles.Normal;
+        }
     }
 
     private void EnsureDifficultyManager()
