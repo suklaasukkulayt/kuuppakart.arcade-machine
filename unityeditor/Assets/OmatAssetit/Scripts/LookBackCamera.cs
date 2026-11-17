@@ -3,7 +3,6 @@ using UnityEngine;
 public class LookBackCamera : MonoBehaviour
 {
     public Transform carCamera;
-    public KeyCode lookBackKey = KeyCode.V;
 
     [Header("Look back camera settings")]
     public bool autoMirrorPosition = true;
@@ -37,6 +36,7 @@ public class LookBackCamera : MonoBehaviour
     private Vector3 cameraPositionVelocity;
     private Vector3 currentMotionOffset;
     private Quaternion currentMotionRotation = Quaternion.identity;
+    private KuuppaKartControls controls;
 
     private void Start()
     {
@@ -56,14 +56,14 @@ public class LookBackCamera : MonoBehaviour
 
         if (carCamera == null)
         {
-            Debug.LogWarning("[LookBackCamera] Car Camera -viittaus puuttuu. Aseta se Inspectorissa.");
+            Debug.LogWarning("LookBackCamera: Car Camera reference is missing. Assign it in the Inspector.");
             enabled = false;
             return;
         }
 
+        controls = KuuppaKartControls.EnsureInstance();
         if (playerTransform == null)
             playerTransform = carCamera.parent != null ? carCamera.parent : transform;
-
         if (playerBody == null)
             playerBody = playerTransform.GetComponentInParent<Rigidbody>();
 
@@ -72,7 +72,6 @@ public class LookBackCamera : MonoBehaviour
             Camera cam = carCamera.GetComponent<Camera>();
             if (cam != null)
                 cam.fieldOfView = DifficultyManager.Instance.SelectedFov;
-
             if (DifficultyManager.Instance.FirstPerson)
             {
                 carCamera.localPosition = firstPersonLocalPosition;
@@ -82,11 +81,9 @@ public class LookBackCamera : MonoBehaviour
 
         forwardPosition = carCamera.localPosition;
         forwardRotation = carCamera.localRotation;
-
         Vector3 basePos = autoMirrorPosition
             ? new Vector3(forwardPosition.x, forwardPosition.y, -forwardPosition.z)
             : rearViewLocalPosition;
-
         computedRearPosition = basePos;
         computedRearRotation = forwardRotation * Quaternion.Euler(rearViewPitchOffset, 180f, 0f);
 
@@ -96,14 +93,9 @@ public class LookBackCamera : MonoBehaviour
 
     private void Update()
     {
-        if (carCamera == null)
-            return;
-
-        if (Input.GetKeyDown(lookBackKey))
-            lookingBack = true;
-
-        if (Input.GetKeyUp(lookBackKey))
-            lookingBack = false;
+        if (controls == null)
+            controls = KuuppaKartControls.EnsureInstance();
+        lookingBack = controls.LookBackHeld;
     }
 
     private void LateUpdate()
@@ -114,8 +106,8 @@ public class LookBackCamera : MonoBehaviour
         float dt = Mathf.Max(Time.deltaTime, 0.0001f);
         Vector3 targetPosition = lookingBack ? computedRearPosition : forwardPosition;
         Quaternion targetRotation = lookingBack ? computedRearRotation : forwardRotation;
-
         Vector3 localAcceleration = Vector3.zero;
+
         if (playerBody != null && playerTransform != null)
         {
             Vector3 localVelocity = playerTransform.InverseTransformDirection(playerBody.linearVelocity);
@@ -130,7 +122,6 @@ public class LookBackCamera : MonoBehaviour
             float bobBlend = Mathf.InverseLerp(speedBobStartSpeed, speedBobStartSpeed * 2f, playerBody.linearVelocity.magnitude);
             float bob = Mathf.Sin(Time.time * speedBobFrequency) * speedBobAmplitude * bobBlend;
             currentMotionOffset = new Vector3(lateralOffset, bob, longitudinalOffset);
-
             float roll = Mathf.Clamp(-playerBody.angularVelocity.y * turningRollMultiplier, -maximumRollAngle, maximumRollAngle);
             float pitch = Mathf.Clamp(-localAcceleration.z * accelerationPitchMultiplier, -maximumPitchAngle, maximumPitchAngle);
             currentMotionRotation = Quaternion.Euler(pitch, 0f, roll);
@@ -143,7 +134,6 @@ public class LookBackCamera : MonoBehaviour
 
         targetPosition += currentMotionOffset;
         targetRotation *= currentMotionRotation;
-
         float smoothTime = 1f / Mathf.Max(1f, viewTransitionSpeed);
         carCamera.localPosition = Vector3.SmoothDamp(carCamera.localPosition, targetPosition, ref cameraPositionVelocity, smoothTime, Mathf.Infinity, dt);
         float rotationBlend = 1f - Mathf.Exp(-Mathf.Max(1f, viewTransitionSpeed) * dt);

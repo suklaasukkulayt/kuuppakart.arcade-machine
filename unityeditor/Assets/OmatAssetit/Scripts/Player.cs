@@ -49,22 +49,21 @@ public class Player : MonoBehaviour
     public float BoostCooldownLeft => Mathf.Max(0f, cooldownTimer);
 
     private float currentMaxSpeed;
-    private float boostTimer = 0f;
-    private float cooldownTimer = 0f;
-    private bool isBoosted = false;
+    private float boostTimer;
+    private float cooldownTimer;
+    private bool isBoosted;
     private Rigidbody rb;
     private Collider groundCollider;
-    private bool isStunned = false;
-    private float stunTimer = 0f;
+    private bool isStunned;
+    private float stunTimer;
     private bool writeBoostText = true;
-
-    private float forwardSpeed = 0f;
+    private float forwardSpeed;
     private PlayerUprightAndShortcuts_AutoFallReset autoCorrector;
-
+    private KuuppaKartControls controls;
     private Vector3 intendedVelocity;
     private Vector3 commandedXZ;
     [Range(0.2f, 0.95f)] public float blockedRatio = 0.7f;
-    private float crashCooldownTimer = 0f;
+    private float crashCooldownTimer;
 
     [Header("Ground following")]
     public LayerMask groundMask = ~0;
@@ -97,24 +96,22 @@ public class Player : MonoBehaviour
     public float wallExtraBounce = 3f;
     public float wallExtraSpin = 4f;
 
-    private float blockedTimer = 0f;
-    private float ignoreBlockingUntil = 0f;
+    private float blockedTimer;
+    private float ignoreBlockingUntil;
     private readonly RaycastHit[] groundHits = new RaycastHit[8];
 
-    void Start()
+    private void Start()
     {
         rb = GetComponent<Rigidbody>();
         groundCollider = GetComponent<Collider>();
         normalConstraints = rb.constraints;
         autoCorrector = GetComponent<PlayerUprightAndShortcuts_AutoFallReset>();
+        controls = KuuppaKartControls.EnsureInstance();
 
         if (DifficultyManager.Instance != null && DifficultyManager.Instance.SelectedDifficulty == Difficulty.Hard)
-        {
             baseSpeed *= hardModeSpeedMultiplier;
-        }
 
         currentMaxSpeed = baseSpeed;
-
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.maxDepenetrationVelocity = maxDepenetrationVelocity;
 
@@ -122,18 +119,19 @@ public class Player : MonoBehaviour
         {
             writeBoostText = false;
             if (uiText != null)
-                uiText.text = "";
+                uiText.text = string.Empty;
         }
     }
 
-    void Update()
+    private void Update()
     {
-        if (GameManager.Instance.Phase != RacePhase.Racing)
-        {
+        if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
             return;
-        }
 
-        if (Input.GetKeyDown(KeyCode.B) && !isBoosted && cooldownTimer <= 0f)
+        if (controls == null)
+            controls = KuuppaKartControls.EnsureInstance();
+
+        if (controls.BoostPressed && !isBoosted && cooldownTimer <= 0f)
         {
             isBoosted = true;
             currentMaxSpeed = boostSpeed;
@@ -158,42 +156,29 @@ public class Player : MonoBehaviour
         if (uiText != null && writeBoostText)
         {
             if (isBoosted)
-            {
                 uiText.text = "<mark>Boosted!</mark>";
-            }
             else if (cooldownTimer > 0f)
-            {
                 uiText.text = $"<mark>{cooldownTimer:F1}s to the next boost!</mark>";
-            }
             else
-            {
                 uiText.text = "<mark>Boost ready!</mark>";
-            }
         }
     }
 
-    void OnCollisionEnter(Collision collision)
+    private void OnCollisionEnter(Collision collision)
     {
         if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
             return;
 
         if (!isStunned)
             SuppressLowEdgeBounce(collision);
-
         if (isStunned || crashCooldownTimer > 0f)
             return;
 
         CarIdentify otherCar = collision.collider.GetComponentInParent<CarIdentify>();
         bool hitCar = otherCar != null;
-
         Rigidbody otherBody = collision.rigidbody;
-        if (otherBody != null
-            && !otherBody.isKinematic
-            && otherBody.mass < rb.mass * lightObjectMassRatio
-            && !hitCar)
-        {
+        if (otherBody != null && !otherBody.isKinematic && otherBody.mass < rb.mass * lightObjectMassRatio && !hitCar)
             return;
-        }
 
         Vector3 flatForward = transform.forward;
         flatForward.y = 0f;
@@ -201,7 +186,6 @@ public class Player : MonoBehaviour
             return;
         flatForward.Normalize();
 
-        ContactPoint contact = default;
         Vector3 away = Vector3.zero;
         float bestFrontAlignment = -1f;
         bool foundFrontalContact = false;
@@ -212,30 +196,22 @@ public class Player : MonoBehaviour
         {
             ContactPoint candidate = collision.GetContact(i);
             Vector3 candidateAway = candidate.normal;
-
             Vector3 towardPlayer = rb.worldCenterOfMass - candidate.point;
             if (Vector3.Dot(candidateAway, towardPlayer) < 0f)
                 candidateAway = -candidateAway;
-
-            if (candidateAway.y > groundNormalY)
-                continue;
-
-            if (candidate.point.y < minimumContactHeight)
+            if (candidateAway.y > groundNormalY || candidate.point.y < minimumContactHeight)
                 continue;
 
             Vector3 candidateAwayFlat = new Vector3(candidateAway.x, 0f, candidateAway.z);
             if (candidateAwayFlat.sqrMagnitude < 0.001f)
                 continue;
             candidateAwayFlat.Normalize();
-
             float frontAlignment = Vector3.Dot(candidateAwayFlat, -flatForward);
             if (frontAlignment < frontalCrashDot)
                 continue;
-
             if (frontAlignment > bestFrontAlignment)
             {
                 bestFrontAlignment = frontAlignment;
-                contact = candidate;
                 away = candidateAwayFlat;
                 foundFrontalContact = true;
             }
@@ -260,18 +236,15 @@ public class Player : MonoBehaviour
 
         float intoWall = Mathf.Max(0f, Vector3.Dot(intendedVelocity - otherVel, -away));
         float impactSpeed = Mathf.Max(intoWall, Mathf.Abs(Vector3.Dot(collision.relativeVelocity, away)));
-
         float minSpeed = hitCar ? carHitMinSpeed : crashMinSpeed;
         if (impactSpeed < minSpeed)
             return;
 
         float severity = Mathf.InverseLerp(minSpeed, crashFullSpeed, impactSpeed);
-
         if (autoCorrector != null)
             autoCorrector.Suspended = true;
 
         rb.constraints = RigidbodyConstraints.None;
-
         isStunned = true;
         stunTimer = Mathf.Lerp(minStunTime, maxStunTime, severity);
         crashCooldownTimer = stunTimer + crashCooldown;
@@ -282,11 +255,8 @@ public class Player : MonoBehaviour
         float bounce = impactSpeed * (hitCar ? carBounceFactor : bounceFactor);
         float up = impactSpeed * (hitCar ? carUpFactor : upFactor);
         float spin = Mathf.Lerp(minSpin, maxSpin, severity);
-
         if (hitCar)
-        {
             spin *= carSpinMultiplier;
-        }
         else if (impactSpeed >= wallHardHitSpeed)
         {
             bounce += wallExtraBounce * severity;
@@ -297,50 +267,42 @@ public class Player : MonoBehaviour
         rb.angularVelocity = Random.onUnitSphere * spin;
     }
 
-    void OnCollisionStay(Collision collision)
+    private void OnCollisionStay(Collision collision)
     {
         if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing || isStunned)
             return;
-
         SuppressLowEdgeBounce(collision);
     }
 
-    void SuppressLowEdgeBounce(Collision collision)
+    private void SuppressLowEdgeBounce(Collision collision)
     {
         if (rb == null || groundCollider == null)
             return;
-
         if (collision.collider.GetComponentInParent<CarIdentify>() != null)
             return;
 
         Rigidbody otherBody = collision.rigidbody;
-        if (otherBody != null && !otherBody.isKinematic
-            && otherBody.mass < rb.mass * lightObjectMassRatio)
+        if (otherBody != null && !otherBody.isKinematic && otherBody.mass < rb.mass * lightObjectMassRatio)
             return;
 
         float lowerBodyTop = groundCollider.bounds.min.y + Mathf.Max(0f, lowObstacleHeight);
-
         bool lowSideContact = false;
         for (int i = 0; i < collision.contactCount; i++)
         {
             ContactPoint contact = collision.GetContact(i);
             if (contact.point.y > lowerBodyTop)
                 continue;
-
             Vector3 normalTowardPlayer = contact.normal;
             if (Vector3.Dot(normalTowardPlayer, rb.worldCenterOfMass - contact.point) < 0f)
                 normalTowardPlayer = -normalTowardPlayer;
-
             if (normalTowardPlayer.y > groundNormalY)
                 continue;
-
             lowSideContact = true;
             break;
         }
 
         if (!lowSideContact)
             return;
-        
         ignoreBlockingUntil = Mathf.Max(ignoreBlockingUntil, Time.time + Mathf.Max(0f, blockedTimeLimit));
         blockedTimer = 0f;
         Vector3 velocity = rb.linearVelocity;
@@ -349,36 +311,33 @@ public class Player : MonoBehaviour
             velocity.y = 0f;
             rb.linearVelocity = velocity;
         }
-
         Vector3 angular = rb.angularVelocity;
         angular.x = 0f;
         angular.z = 0f;
         rb.angularVelocity = angular;
     }
 
-    void FixedUpdate()
+    private void FixedUpdate()
     {
-        if (GameManager.Instance.Phase != RacePhase.Racing)
+        if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
             return;
 
+        if (controls == null)
+            controls = KuuppaKartControls.EnsureInstance();
         float dt = Time.fixedDeltaTime;
-
         if (crashCooldownTimer > 0f)
             crashCooldownTimer -= dt;
 
         if (isStunned)
         {
             stunTimer -= dt;
-
             if (stunTimer <= 0f)
             {
                 isStunned = false;
                 rb.constraints = normalConstraints;
-
                 if (autoCorrector != null)
                     autoCorrector.Suspended = false;
             }
-
             return;
         }
 
@@ -391,15 +350,16 @@ public class Player : MonoBehaviour
             return;
         }
 
-        float input = Input.GetAxisRaw("Vertical");
-        float turn = Input.GetAxis("Horizontal") * turnSpeed * dt;
-
+        float input = controls != null ? controls.MoveVertical : 0f;
+        float turn = (controls != null ? controls.MoveHorizontal : 0f) * turnSpeed * dt;
         Vector3 flatForward = transform.forward;
         flatForward.y = 0f;
         flatForward = flatForward.sqrMagnitude > 0.0001f ? flatForward.normalized : Vector3.forward;
 
         RaycastHit hitCenter;
-        bool grounded = ProbeGround(rb.position + Vector3.up * groundCheckHeight, groundCheckHeight + groundSnapDistance, out hitCenter) && hitCenter.normal.y > Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad) && IsGroundWithinSnapDistance(hitCenter);
+        bool grounded = ProbeGround(rb.position + Vector3.up * groundCheckHeight, groundCheckHeight + groundSnapDistance, out hitCenter)
+            && hitCenter.normal.y > Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad)
+            && IsGroundWithinSnapDistance(hitCenter);
         UpdateBlockedSpeed(dt, grounded);
 
         float slopeAccel = 0f;
@@ -409,17 +369,14 @@ public class Player : MonoBehaviour
             float slopeForward = -(gn.x * flatForward.x + gn.z * flatForward.z) / Mathf.Max(gn.y, 0.01f);
             float sinSlope = slopeForward / Mathf.Sqrt(1f + slopeForward * slopeForward);
             slopeAccel = -Physics.gravity.magnitude * sinSlope * slopeGravityFactor;
-
             if (isBoosted)
                 slopeAccel *= boostSlopeFactor;
         }
 
         UpdateForwardSpeed(input, dt, slopeAccel);
-
         float dirSign = forwardSpeed >= 0f ? 1f : -1f;
         Vector3 moveFlat = flatForward * dirSign;
         float speedAbs = Mathf.Abs(forwardSpeed);
-
         Vector3 vel = rb.linearVelocity;
         Vector3 desired;
 
@@ -429,18 +386,14 @@ public class Player : MonoBehaviour
             Vector3 n = hitCenter.normal;
             float slopeNormal = -(n.x * moveFlat.x + n.z * moveFlat.z) / Mathf.Max(n.y, 0.01f);
             float slope = slopeNormal;
-
             RaycastHit hitAhead;
-            if (ProbeGround(rb.position + moveFlat * lookAhead + Vector3.up * groundCheckHeight,
-                            groundCheckHeight + 1f, out hitAhead))
+            if (ProbeGround(rb.position + moveFlat * lookAhead + Vector3.up * groundCheckHeight, groundCheckHeight + 1f, out hitAhead))
             {
                 float dy = hitAhead.point.y - hitCenter.point.y;
                 if (Mathf.Abs(dy) <= maxStepHeight)
                     slope = dy / Mathf.Max(lookAhead, 0.01f);
             }
-
             slope = Mathf.Clamp(slope, -maxTan, maxTan);
-
             Vector3 moveDir = (moveFlat + Vector3.up * slope).normalized;
             desired = moveDir * speedAbs;
             vel.x = desired.x;
@@ -456,7 +409,6 @@ public class Player : MonoBehaviour
         rb.linearVelocity = vel;
         intendedVelocity = desired;
         commandedXZ = new Vector3(desired.x, 0f, desired.z);
-
         Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn, 0f);
         if (grounded)
         {
@@ -467,16 +419,15 @@ public class Player : MonoBehaviour
         rb.MoveRotation(rot);
     }
 
-    bool IsGroundWithinSnapDistance(RaycastHit hit)
+    private bool IsGroundWithinSnapDistance(RaycastHit hit)
     {
         if (groundCollider == null)
             return true;
-
         float colliderBottomY = groundCollider.bounds.min.y;
         return hit.point.y >= colliderBottomY - Mathf.Max(0f, groundSnapDistance);
     }
 
-    void UpdateBlockedSpeed(float dt, bool grounded)
+    private void UpdateBlockedSpeed(float dt, bool grounded)
     {
         if (!grounded || Time.time < ignoreBlockingUntil || commandedXZ.sqrMagnitude < 1f)
         {
@@ -488,8 +439,7 @@ public class Player : MonoBehaviour
         float commandedMagnitude = commandedXZ.magnitude;
         float actualAlongCommand = Vector3.Dot(horizontalVelocity, commandedXZ / commandedMagnitude);
         float ratio = actualAlongCommand / commandedMagnitude;
-        float blockingThreshold = blockedRatio;
-        if (ratio < blockingThreshold)
+        if (ratio < blockedRatio)
         {
             blockedTimer += dt;
             if (blockedTimer >= blockedTimeLimit)
@@ -504,41 +454,35 @@ public class Player : MonoBehaviour
         }
     }
 
-    bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)
+    private bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)
     {
         int count = Physics.RaycastNonAlloc(origin, Vector3.down, groundHits, distance, groundMask, QueryTriggerInteraction.Ignore);
         best = default;
         float bestDistance = float.MaxValue;
         bool found = false;
-
         for (int i = 0; i < count; i++)
         {
-            RaycastHit h = groundHits[i];
-            if (h.collider.attachedRigidbody != null)
+            RaycastHit hit = groundHits[i];
+            if (hit.collider.attachedRigidbody != null)
                 continue;
-
-            if (h.distance < bestDistance)
+            if (hit.distance < bestDistance)
             {
-                bestDistance = h.distance;
-                best = h;
+                bestDistance = hit.distance;
+                best = hit;
                 found = true;
             }
         }
-
         return found;
     }
 
-    void UpdateForwardSpeed(float input, float dt, float slopeAccel)
+    private void UpdateForwardSpeed(float input, float dt, float slopeAccel)
     {
         float maxReverse = baseSpeed * reverseSpeedFactor;
         float accel = isBoosted ? boostAcceleration : acceleration;
-
         if (input > 0.1f)
         {
             if (forwardSpeed < 0f)
-            {
                 forwardSpeed = Mathf.MoveTowards(forwardSpeed, 0f, brakeDeceleration * dt);
-            }
             else if (forwardSpeed < currentMaxSpeed)
             {
                 float t = Mathf.Clamp01(forwardSpeed / currentMaxSpeed);
@@ -549,13 +493,9 @@ public class Player : MonoBehaviour
         else if (input < -0.1f)
         {
             if (forwardSpeed > 0f)
-            {
                 forwardSpeed = Mathf.MoveTowards(forwardSpeed, 0f, brakeDeceleration * dt);
-            }
             else
-            {
                 forwardSpeed = Mathf.MoveTowards(forwardSpeed, -maxReverse, reverseAcceleration * dt);
-            }
         }
         else
         {
@@ -572,7 +512,6 @@ public class Player : MonoBehaviour
         }
 
         forwardSpeed = Mathf.Max(forwardSpeed, -maxRollBackSpeed);
-
         if (forwardSpeed > currentMaxSpeed)
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, currentMaxSpeed, overspeedDeceleration * dt);
     }

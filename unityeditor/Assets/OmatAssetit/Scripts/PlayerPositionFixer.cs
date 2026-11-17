@@ -1,12 +1,8 @@
-using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
 {
-    [Header("Teleport & shortcuts")]
-    public Vector3 teleportPosition = new Vector3(13f, 0f, 47f);
-
     [Header("Auto-fall reset")]
     public float fallYThreshold = -5f;
 
@@ -15,7 +11,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
     public float angularVelocityMin = 0.5f;
     public float stuckTimeThreshold = 1.5f;
     public float correctionRetriggerCooldown = 1.0f;
-
     public float maxCorrectionDuration = 2.0f;
 
     [Header("Smooth auto-correction")]
@@ -26,16 +21,16 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
     [Header("Camera settings")]
     public bool useCameraYaw = true;
 
-    Rigidbody rb;
-    Camera mainCamera;
+    private Rigidbody rb;
+    private Camera mainCamera;
+    private bool isAutoCorrecting;
+    private Quaternion autoTargetRotation = Quaternion.identity;
+    private float tiltTimer;
+    private float correctionCooldownTimer;
+    private float correctionElapsedTime;
+    private bool suspended;
 
-    bool isAutoCorrecting = false;
-    Quaternion autoTargetRotation = Quaternion.identity;
-    float tiltTimer = 0f;
-    float correctionCooldownTimer = 0f;
-    float correctionElapsedTime = 0f;
     public bool IsAutoCorrecting => isAutoCorrecting;
-    bool suspended = false;
     public bool Suspended
     {
         get => suspended;
@@ -50,23 +45,23 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         }
     }
 
-    void Awake()
+    private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-
         mainCamera = GetComponentInChildren<Camera>();
         if (mainCamera == null)
-        {
             mainCamera = Camera.main;
-        }
-
         if (mainCamera == null)
-        {
-            Debug.LogWarning("[PlayerUprightAndShortcuts_AutoFallReset] Kameraa ei löytynyt Playerin lapsista eikä Camera.main:sta. useCameraYaw ei toimi.");
-        }
+            Debug.LogWarning("PlayerUprightAndShortcuts_AutoFallReset: No camera was found. Camera-based yaw correction is unavailable.");
     }
 
-    void FixedUpdate()
+    private void Update()
+    {
+        if (transform.position.y < fallYThreshold)
+            DoFallSafetyTeleport();
+    }
+
+    private void FixedUpdate()
     {
         if (suspended)
         {
@@ -75,45 +70,19 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         }
 
         if (correctionCooldownTimer > 0f)
-        {
             correctionCooldownTimer -= Time.fixedDeltaTime;
-        }
 
         if (!isAutoCorrecting && correctionCooldownTimer <= 0f && IsTiltedBeyondThreshold())
-        {
             StartAutoCorrection();
-        }
 
         if (isAutoCorrecting)
-        {
             PerformAutoCorrectionStep();
-        }
     }
 
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            StartAutoCorrection(GetLookDirectionRotation());
-        }
-
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            DoTeleportAsT();
-        }
-
-        if (transform.position.y < fallYThreshold)
-        {
-            DoFallSafetyTeleport();
-        }
-    }
-
-    void DoFallSafetyTeleport()
+    private void DoFallSafetyTeleport()
     {
         Vector3 current = rb.position;
-        Vector3 fixedPos = new Vector3(current.x, 0f, current.z);
-
-        rb.position = fixedPos;
+        rb.position = new Vector3(current.x, 0f, current.z);
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         tiltTimer = 0f;
@@ -122,29 +91,10 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         Quaternion uprightKeepHeading = flatForward.sqrMagnitude > 0.0001f
             ? Quaternion.LookRotation(flatForward.normalized, Vector3.up)
             : Quaternion.identity;
-
         StartAutoCorrection(uprightKeepHeading);
     }
 
-    void DoTeleportAsT()
-    {
-        rb.position = teleportPosition;
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-        tiltTimer = 0f;
-
-        Quaternion target90 = Quaternion.Euler(0f, 90f, 0f);
-
-        if (mainCamera != null && !mainCamera.transform.IsChildOf(transform))
-        {
-            Vector3 camEuler = mainCamera.transform.eulerAngles;
-            mainCamera.transform.rotation = Quaternion.Euler(camEuler.x, 90f, camEuler.z);
-        }
-
-        StartAutoCorrection(target90);
-    }
-
-    bool IsTiltedBeyondThreshold()
+    private bool IsTiltedBeyondThreshold()
     {
         float angleFromUp = Vector3.Angle(transform.up, Vector3.up);
         if (angleFromUp <= angleThreshold)
@@ -163,28 +113,22 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         return tiltTimer >= stuckTimeThreshold;
     }
 
-    void StartAutoCorrection(Quaternion? optionalTarget = null)
+    private void StartAutoCorrection(Quaternion? optionalTarget = null)
     {
         Quaternion target = optionalTarget ?? GetLookDirectionRotation();
-
         if (correctOnlyYaw)
-        {
-            float yaw = target.eulerAngles.y;
-            target = Quaternion.Euler(0f, yaw, 0f);
-        }
+            target = Quaternion.Euler(0f, target.eulerAngles.y, 0f);
 
         autoTargetRotation = target;
         isAutoCorrecting = true;
         tiltTimer = 0f;
         correctionElapsedTime = 0f;
-
         rb.angularVelocity = Vector3.zero;
     }
 
-    void PerformAutoCorrectionStep()
+    private void PerformAutoCorrectionStep()
     {
         correctionElapsedTime += Time.fixedDeltaTime;
-
         if (correctionElapsedTime >= maxCorrectionDuration)
         {
             rb.angularVelocity = Vector3.zero;
@@ -194,7 +138,6 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         }
 
         float angleToTarget = Quaternion.Angle(rb.rotation, autoTargetRotation);
-
         if (angleToTarget <= finishAngleEpsilon)
         {
             rb.MoveRotation(autoTargetRotation);
@@ -205,36 +148,25 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
         }
 
         float maxDelta = autoCorrectionDegreesPerSecond * Time.fixedDeltaTime;
-
-        Quaternion next = Quaternion.RotateTowards(rb.rotation, autoTargetRotation, maxDelta);
-
-        rb.MoveRotation(next);
-
+        rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, autoTargetRotation, maxDelta));
         rb.angularVelocity = Vector3.zero;
     }
 
-    Quaternion GetLookDirectionRotation()
+    private Quaternion GetLookDirectionRotation()
     {
         if (useCameraYaw && mainCamera != null)
-        {
-            float cameraYaw = mainCamera.transform.eulerAngles.y;
-            return Quaternion.Euler(0f, cameraYaw, 0f);
-        }
-        else if (transform.forward != Vector3.zero)
-        {
-            Vector3 flatForward = new Vector3(transform.forward.x, 0f, transform.forward.z);
-            if (flatForward.sqrMagnitude < 0.0001f)
-                return rb.rotation;
-            return Quaternion.LookRotation(flatForward.normalized, Vector3.up);
-        }
-        else
-        {
+            return Quaternion.Euler(0f, mainCamera.transform.eulerAngles.y, 0f);
+
+        Vector3 flatForward = new Vector3(transform.forward.x, 0f, transform.forward.z);
+        if (flatForward.sqrMagnitude < 0.0001f)
             return rb.rotation;
-        }
+        return Quaternion.LookRotation(flatForward.normalized, Vector3.up);
     }
-    void OnDrawGizmosSelected()
+
+    private void OnDrawGizmosSelected()
     {
-        if (!Application.isPlaying) return;
+        if (!Application.isPlaying)
+            return;
         Gizmos.color = Color.cyan;
         Gizmos.DrawLine(transform.position, transform.position + transform.forward * 2f);
         if (isAutoCorrecting)
@@ -242,10 +174,9 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
             Gizmos.color = Color.green;
             Gizmos.DrawLine(transform.position, transform.position + autoTargetRotation * Vector3.forward * 2f);
         }
-
         Gizmos.color = Color.yellow;
         Vector3 from = new Vector3(transform.position.x - 2f, fallYThreshold, transform.position.z - 2f);
-        Vector3 to   = new Vector3(transform.position.x + 2f, fallYThreshold, transform.position.z + 2f);
+        Vector3 to = new Vector3(transform.position.x + 2f, fallYThreshold, transform.position.z + 2f);
         Gizmos.DrawLine(from, to);
     }
 }

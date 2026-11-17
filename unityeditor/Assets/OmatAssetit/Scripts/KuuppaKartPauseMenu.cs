@@ -9,15 +9,26 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 {
     public enum MenuAction
     {
-        Resume,
-        Settings,
-        Quit,
-        Resolution,
-        Fullscreen,
-        FrameRateLimit,
-        VSync,
-        GraphicsPreset,
-        FpsCounter,
+        Resume = 0,
+        Settings = 1,
+        Quit = 2,
+        Resolution = 3,
+        Fullscreen = 4,
+        FrameRateLimit = 5,
+        VSync = 6,
+        GraphicsPreset = 7,
+        FpsCounter = 8,
+        Back = 9,
+        Controls = 10
+    }
+
+    public enum ControlsEntryAction
+    {
+        Profile,
+        Device,
+        MouseMenuInput,
+        Rebind,
+        ResetBindings,
         Back
     }
 
@@ -31,13 +42,26 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         public MenuAction action;
     }
 
+    [Serializable]
+    public sealed class ControlsEntry
+    {
+        public Button button;
+        public Graphic highlightGraphic;
+        public TMP_Text label;
+        public TMP_Text value;
+        public ControlsEntryAction action;
+        public KuuppaKartAction binding;
+    }
+
     [Header("Canvas references")]
     [SerializeField] private GameObject menuRoot;
     [SerializeField] private GameObject mainPanel;
     [SerializeField] private GameObject settingsPanel;
+    [SerializeField] private GameObject controlsPanel;
     [SerializeField] private GraphicRaycaster menuRaycaster;
     [SerializeField] private MenuEntry[] mainEntries;
     [SerializeField] private MenuEntry[] settingsEntries;
+    [SerializeField] private ControlsEntry[] controlsEntries;
 
     [Header("Selection colors")]
     [SerializeField] private Color selectedBackgroundColor = new Color(0.05f, 0.42f, 0.61f, 1f);
@@ -47,11 +71,15 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
     private readonly Dictionary<Graphic, Color> originalGraphicColors = new Dictionary<Graphic, Color>();
     private readonly Dictionary<TMP_Text, Color> originalTextColors = new Dictionary<TMP_Text, Color>();
     private readonly List<Vector2Int> availableResolutions = new List<Vector2Int>();
+    private KuuppaKartControls controls;
     private int mainSelection;
     private int settingsSelection;
+    private int controlsSelection;
     private bool menuOpen;
     private bool settingsOpen;
+    private bool controlsOpen;
     private bool editingSetting;
+    private bool selectedController;
     private float previousTimeScale = 1f;
     private Vector2Int editOriginalResolution;
     private int editOriginalFrameRate;
@@ -60,16 +88,18 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
     private int frameRateIndex;
 
     private static readonly string[] PresetNames = { "Potato", "Low", "Balanced", "High" };
+    public bool IsOpen => menuOpen;
 
     private void Awake()
     {
         if (menuRoot == null || mainPanel == null || settingsPanel == null)
         {
-            Debug.LogError("KuuppaKartPauseMenu: assign Menu Root, Main Panel and Settings Panel in the Inspector.");
+            Debug.LogError("KuuppaKartPauseMenu: Menu Root, Main Panel and Settings Panel must be assigned.");
             enabled = false;
             return;
         }
 
+        controls = KuuppaKartControls.EnsureInstance();
         if (menuRaycaster == null)
         {
             Canvas parentCanvas = GetComponentInParent<Canvas>();
@@ -77,14 +107,15 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
                 menuRaycaster = parentCanvas.GetComponent<GraphicRaycaster>();
         }
 
-        if (menuRaycaster != null)
-            menuRaycaster.enabled = false;
-
         CacheEntries(mainEntries);
         CacheEntries(settingsEntries);
+        CacheControlsEntries(controlsEntries);
         menuRoot.SetActive(false);
         mainPanel.SetActive(true);
         settingsPanel.SetActive(false);
+        if (controlsPanel != null)
+            controlsPanel.SetActive(false);
+        ApplyMouseInput();
         Time.timeScale = 1f;
     }
 
@@ -96,42 +127,58 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
     private void Update()
     {
-        if (!string.Equals(SceneManager.GetActiveScene().name, "Game", StringComparison.Ordinal))
+        if (!GameManager.IsGameplayScene(SceneManager.GetActiveScene().name))
             return;
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (controls == null)
+            controls = KuuppaKartControls.EnsureInstance();
+
+        if (controls.PausePressed && !menuOpen)
         {
-            if (!menuOpen)
-                OpenMenu();
-            else if (editingSetting)
-                CancelEditing();
-            else if (settingsOpen)
-                ShowMainMenu();
-            else
-                ResumeGame();
+            OpenMenu();
             return;
         }
 
         if (!menuOpen)
             return;
 
-        if (Input.GetKeyDown(KeyCode.S))
-        {
-            GoBack();
+        if (controls.IsRebinding)
             return;
-        }
 
-        int direction = Input.GetKeyDown(KeyCode.A) ? -1 : Input.GetKeyDown(KeyCode.D) ? 1 : 0;
-        if (direction != 0)
+        if (controls.MenuBackPressed)
         {
-            if (settingsOpen && editingSetting)
-                AdjustEditing(direction);
+            if (editingSetting)
+                CancelEditing();
+            else if (settingsOpen || controlsOpen)
+                ShowMainMenu();
             else
-                MoveSelection(direction);
+                ResumeGame();
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.W))
+        int selectionDirection = controls.MenuSelectionDirectionThisFrame;
+        int horizontalDirection = controls.MenuHorizontalDirectionThisFrame;
+
+        if (settingsOpen && editingSetting)
+        {
+            int direction = controls.Profile == KuuppaKartControlProfile.Arcade ? selectionDirection : horizontalDirection;
+            if (direction != 0)
+                AdjustEditing(direction);
+        }
+        else if (controlsOpen)
+        {
+            ControlsEntry selected = GetSelectedControlsEntry();
+            if (selected != null && (selected.action == ControlsEntryAction.Profile || selected.action == ControlsEntryAction.Device) && horizontalDirection != 0)
+                AdjustControlsValue(selected, horizontalDirection);
+            else if (selectionDirection != 0)
+                MoveControlsSelection(selectionDirection);
+        }
+        else if (selectionDirection != 0)
+        {
+            MoveSelection(selectionDirection);
+        }
+
+        if (controls.MenuConfirmPressed)
             ConfirmSelection();
     }
 
@@ -154,15 +201,49 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
                     entry.highlightGraphic = entry.button.targetGraphic;
                 if (entry.label == null)
                     entry.label = entry.button.GetComponentInChildren<TMP_Text>();
+                int index = i;
+                entry.button.onClick.AddListener(() => HandleMenuClick(index));
             }
 
-            if (entry.highlightGraphic != null && !originalGraphicColors.ContainsKey(entry.highlightGraphic))
-                originalGraphicColors.Add(entry.highlightGraphic, entry.highlightGraphic.color);
-            if (entry.label != null && !originalTextColors.ContainsKey(entry.label))
-                originalTextColors.Add(entry.label, entry.label.color);
-            if (entry.value != null && !originalTextColors.ContainsKey(entry.value))
-                originalTextColors.Add(entry.value, entry.value.color);
+            CacheGraphicAndText(entry.highlightGraphic, entry.label, entry.value);
         }
+    }
+
+    private void CacheControlsEntries(ControlsEntry[] entries)
+    {
+        if (entries == null)
+            return;
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            ControlsEntry entry = entries[i];
+            if (entry == null)
+                continue;
+
+            if (entry.button != null)
+            {
+                entry.button.navigation = new Navigation { mode = Navigation.Mode.None };
+                entry.button.transition = Selectable.Transition.None;
+                if (entry.highlightGraphic == null)
+                    entry.highlightGraphic = entry.button.targetGraphic;
+                if (entry.label == null)
+                    entry.label = entry.button.GetComponentInChildren<TMP_Text>();
+                int index = i;
+                entry.button.onClick.AddListener(() => HandleControlsClick(index));
+            }
+
+            CacheGraphicAndText(entry.highlightGraphic, entry.label, entry.value);
+        }
+    }
+
+    private void CacheGraphicAndText(Graphic highlight, TMP_Text label, TMP_Text value)
+    {
+        if (highlight != null && !originalGraphicColors.ContainsKey(highlight))
+            originalGraphicColors.Add(highlight, highlight.color);
+        if (label != null && !originalTextColors.ContainsKey(label))
+            originalTextColors.Add(label, label.color);
+        if (value != null && !originalTextColors.ContainsKey(value))
+            originalTextColors.Add(value, value.color);
     }
 
     private void OpenMenu()
@@ -171,12 +252,12 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         Time.timeScale = 0f;
         menuOpen = true;
         settingsOpen = false;
+        controlsOpen = false;
         editingSetting = false;
-        mainSelection = FindActionIndex(mainEntries, MenuAction.Resume);
-        if (mainSelection < 0)
-            mainSelection = 0;
+        mainSelection = Mathf.Max(0, FindActionIndex(mainEntries, MenuAction.Resume));
         menuRoot.SetActive(true);
         ShowMainPanelOnly();
+        ApplyMouseInput();
         RefreshHighlights();
     }
 
@@ -185,19 +266,25 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         menuRoot.SetActive(false);
         menuOpen = false;
         settingsOpen = false;
+        controlsOpen = false;
         editingSetting = false;
+        ApplyMouseInput();
         Time.timeScale = previousTimeScale > 0f ? previousTimeScale : 1f;
     }
 
     private void ShowMainMenu()
     {
+        bool returnedFromControls = controlsOpen;
         editingSetting = false;
         settingsOpen = false;
+        controlsOpen = false;
         settingsPanel.SetActive(false);
+        if (controlsPanel != null)
+            controlsPanel.SetActive(false);
         mainPanel.SetActive(true);
-        int settingsIndex = FindActionIndex(mainEntries, MenuAction.Settings);
-        if (settingsIndex >= 0)
-            mainSelection = settingsIndex;
+        int target = FindActionIndex(mainEntries, returnedFromControls ? MenuAction.Controls : MenuAction.Settings);
+        if (target >= 0)
+            mainSelection = target;
         RefreshHighlights();
     }
 
@@ -205,11 +292,16 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
     {
         mainPanel.SetActive(true);
         settingsPanel.SetActive(false);
+        if (controlsPanel != null)
+            controlsPanel.SetActive(false);
     }
 
     private void ShowSettings()
     {
+        if (controlsPanel != null)
+            controlsPanel.SetActive(false);
         settingsOpen = true;
+        controlsOpen = false;
         editingSetting = false;
         mainPanel.SetActive(false);
         settingsPanel.SetActive(true);
@@ -218,6 +310,25 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         SetFrameRateIndexToCurrent();
         settingsSelection = Mathf.Max(0, FindActionIndex(settingsEntries, MenuAction.Resolution));
         RefreshSettingsValues();
+        RefreshHighlights();
+    }
+
+    private void ShowControls()
+    {
+        if (controlsPanel == null)
+        {
+            Debug.LogError("KuuppaKartPauseMenu: Assign a Controls Panel in the Inspector.");
+            return;
+        }
+
+        settingsOpen = false;
+        controlsOpen = true;
+        editingSetting = false;
+        mainPanel.SetActive(false);
+        settingsPanel.SetActive(false);
+        controlsPanel.SetActive(true);
+        controlsSelection = Mathf.Max(0, FindControlsEntryIndex(ControlsEntryAction.Profile));
+        RefreshControlsValues();
         RefreshHighlights();
     }
 
@@ -232,42 +343,36 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
         menuOpen = false;
         settingsOpen = false;
+        controlsOpen = false;
         editingSetting = false;
         menuRoot.SetActive(false);
         SceneManager.LoadScene("StartScreen");
     }
 
-    private void GoBack()
-    {
-        if (settingsOpen)
-        {
-            if (editingSetting)
-                CancelEditing();
-            else
-                ShowMainMenu();
-        }
-        else
-        {
-            ResumeGame();
-        }
-    }
-
     private void MoveSelection(int direction)
     {
-        MenuEntry[] entries = settingsOpen ? settingsEntries : mainEntries;
-        if (entries == null || entries.Length == 0)
+        if (mainEntries == null || mainEntries.Length == 0)
             return;
+        mainSelection = WrapIndex(mainSelection + direction, mainEntries.Length);
+        RefreshHighlights();
+    }
 
-        if (settingsOpen)
-            settingsSelection = WrapIndex(settingsSelection + direction, entries.Length);
-        else
-            mainSelection = WrapIndex(mainSelection + direction, entries.Length);
-
+    private void MoveControlsSelection(int direction)
+    {
+        if (controlsEntries == null || controlsEntries.Length == 0)
+            return;
+        controlsSelection = WrapIndex(controlsSelection + direction, controlsEntries.Length);
         RefreshHighlights();
     }
 
     private void ConfirmSelection()
     {
+        if (controlsOpen)
+        {
+            ConfirmControlsSelection();
+            return;
+        }
+
         MenuEntry[] entries = settingsOpen ? settingsEntries : mainEntries;
         if (entries == null || entries.Length == 0)
             return;
@@ -286,6 +391,9 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
                     break;
                 case MenuAction.Settings:
                     ShowSettings();
+                    break;
+                case MenuAction.Controls:
+                    ShowControls();
                     break;
                 case MenuAction.Quit:
                     QuitToMainMenu();
@@ -320,6 +428,76 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
         RefreshSettingsValues();
         RefreshHighlights();
+    }
+
+    private void ConfirmControlsSelection()
+    {
+        ControlsEntry entry = GetSelectedControlsEntry();
+        if (entry == null)
+            return;
+
+        switch (entry.action)
+        {
+            case ControlsEntryAction.Profile:
+                int nextProfile = ((int)controls.Profile + 1) % 3;
+                controls.SetProfile((KuuppaKartControlProfile)nextProfile);
+                break;
+            case ControlsEntryAction.Device:
+                selectedController = !selectedController;
+                break;
+            case ControlsEntryAction.MouseMenuInput:
+                controls.SetMouseMenuInput(!controls.MouseMenuInputEnabled);
+                ApplyMouseInput();
+                break;
+            case ControlsEntryAction.Rebind:
+                controls.BeginRebind(entry.binding, selectedController, RefreshControlsValues);
+                if (entry.value != null)
+                    entry.value.text = "Press a control...";
+                break;
+            case ControlsEntryAction.ResetBindings:
+                controls.ResetCustomBindings();
+                break;
+            case ControlsEntryAction.Back:
+                ShowMainMenu();
+                return;
+        }
+
+        RefreshControlsValues();
+        RefreshHighlights();
+    }
+
+    private void AdjustControlsValue(ControlsEntry entry, int direction)
+    {
+        if (entry.action == ControlsEntryAction.Profile)
+        {
+            int profile = ((int)controls.Profile + direction + 3) % 3;
+            controls.SetProfile((KuuppaKartControlProfile)profile);
+        }
+        else if (entry.action == ControlsEntryAction.Device)
+        {
+            selectedController = direction > 0;
+        }
+        RefreshControlsValues();
+        RefreshHighlights();
+    }
+
+    private void HandleMenuClick(int index)
+    {
+        if (!menuOpen || !controls.MouseMenuInputEnabled)
+            return;
+        if (settingsOpen)
+            settingsSelection = index;
+        else
+            mainSelection = index;
+        ConfirmSelection();
+    }
+
+    private void HandleControlsClick(int index)
+    {
+        if (!menuOpen || !controls.MouseMenuInputEnabled)
+            return;
+        controlsSelection = index;
+        ConfirmControlsSelection();
     }
 
     private void BeginEditing(MenuAction action)
@@ -418,9 +596,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
                 availableResolutions.Add(resolution);
         }
 
-        Vector2Int current = new Vector2Int(
-            KuuppaKartGraphicsSettings.SavedResolutionWidth > 0 ? KuuppaKartGraphicsSettings.SavedResolutionWidth : Screen.width,
-            KuuppaKartGraphicsSettings.SavedResolutionHeight > 0 ? KuuppaKartGraphicsSettings.SavedResolutionHeight : Screen.height);
+        Vector2Int current = GetCurrentResolution();
         if (!availableResolutions.Contains(current))
             availableResolutions.Add(current);
 
@@ -433,10 +609,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
     private void SetResolutionIndexToCurrent()
     {
-        Vector2Int current = new Vector2Int(
-            KuuppaKartGraphicsSettings.SavedResolutionWidth > 0 ? KuuppaKartGraphicsSettings.SavedResolutionWidth : Screen.width,
-            KuuppaKartGraphicsSettings.SavedResolutionHeight > 0 ? KuuppaKartGraphicsSettings.SavedResolutionHeight : Screen.height);
-        resolutionIndex = availableResolutions.IndexOf(current);
+        resolutionIndex = availableResolutions.IndexOf(GetCurrentResolution());
         if (resolutionIndex < 0)
             resolutionIndex = 0;
     }
@@ -490,6 +663,39 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         }
     }
 
+    private void RefreshControlsValues()
+    {
+        if (controlsEntries == null || controls == null)
+            return;
+
+        for (int i = 0; i < controlsEntries.Length; i++)
+        {
+            ControlsEntry entry = controlsEntries[i];
+            if (entry == null || entry.value == null)
+                continue;
+
+            switch (entry.action)
+            {
+                case ControlsEntryAction.Profile:
+                    entry.value.text = controls.Profile.ToString().ToUpperInvariant();
+                    break;
+                case ControlsEntryAction.Device:
+                    entry.value.text = selectedController ? "CONTROLLER" : "KEYBOARD";
+                    break;
+                case ControlsEntryAction.MouseMenuInput:
+                    entry.value.text = controls.MouseMenuInputEnabled ? "ON" : "OFF";
+                    break;
+                case ControlsEntryAction.Rebind:
+                    entry.value.text = controls.GetBindingDisplayName(entry.binding, selectedController);
+                    break;
+                case ControlsEntryAction.ResetBindings:
+                case ControlsEntryAction.Back:
+                    entry.value.text = string.Empty;
+                    break;
+            }
+        }
+    }
+
     private Vector2Int GetCurrentResolution()
     {
         int width = KuuppaKartGraphicsSettings.SavedResolutionWidth;
@@ -501,8 +707,9 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
     private void RefreshHighlights()
     {
-        RefreshEntryHighlights(mainEntries, !settingsOpen && menuOpen, mainSelection);
+        RefreshEntryHighlights(mainEntries, !settingsOpen && !controlsOpen && menuOpen, mainSelection);
         RefreshEntryHighlights(settingsEntries, settingsOpen && menuOpen, settingsSelection);
+        RefreshControlsHighlights(controlsEntries, controlsOpen && menuOpen, controlsSelection);
     }
 
     private void RefreshEntryHighlights(MenuEntry[] entries, bool visible, int selectedIndex)
@@ -515,32 +722,71 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
             MenuEntry entry = entries[i];
             if (entry == null)
                 continue;
-
-            bool selected = visible && i == selectedIndex;
-            bool editing = selected && editingSetting;
-
-            if (entry.highlightGraphic != null && originalGraphicColors.TryGetValue(entry.highlightGraphic, out Color originalGraphicColor))
-                entry.highlightGraphic.color = selected ? selectedBackgroundColor : originalGraphicColor;
-
-            if (entry.label != null && originalTextColors.TryGetValue(entry.label, out Color originalLabelColor))
-                entry.label.color = editing ? editingTextColor : selected ? selectedTextColor : originalLabelColor;
-
-            if (entry.value != null && originalTextColors.TryGetValue(entry.value, out Color originalValueColor))
-                entry.value.color = editing ? editingTextColor : selected ? selectedTextColor : originalValueColor;
+            ApplyHighlight(entry.highlightGraphic, entry.label, entry.value, visible && i == selectedIndex, editingSetting && i == selectedIndex);
         }
+    }
+
+    private void RefreshControlsHighlights(ControlsEntry[] entries, bool visible, int selectedIndex)
+    {
+        if (entries == null)
+            return;
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            ControlsEntry entry = entries[i];
+            if (entry == null)
+                continue;
+            ApplyHighlight(entry.highlightGraphic, entry.label, entry.value, visible && i == selectedIndex, controls.IsRebinding && i == selectedIndex);
+        }
+    }
+
+    private void ApplyHighlight(Graphic graphic, TMP_Text label, TMP_Text value, bool selected, bool editing)
+    {
+        if (graphic != null && originalGraphicColors.TryGetValue(graphic, out Color graphicColor))
+            graphic.color = selected ? selectedBackgroundColor : graphicColor;
+        if (label != null && originalTextColors.TryGetValue(label, out Color labelColor))
+            label.color = editing ? editingTextColor : selected ? selectedTextColor : labelColor;
+        if (value != null && originalTextColors.TryGetValue(value, out Color valueColor))
+            value.color = editing ? editingTextColor : selected ? selectedTextColor : valueColor;
+    }
+
+    private void ApplyMouseInput()
+    {
+        if (menuRaycaster != null)
+            menuRaycaster.enabled = menuOpen && controls != null && controls.MouseMenuInputEnabled;
+    }
+
+    private MenuEntry GetSelectedMenuEntry()
+    {
+        MenuEntry[] entries = settingsOpen ? settingsEntries : mainEntries;
+        int index = settingsOpen ? settingsSelection : mainSelection;
+        return entries != null && index >= 0 && index < entries.Length ? entries[index] : null;
+    }
+
+    private ControlsEntry GetSelectedControlsEntry()
+    {
+        return controlsEntries != null && controlsSelection >= 0 && controlsSelection < controlsEntries.Length
+            ? controlsEntries[controlsSelection]
+            : null;
     }
 
     private int FindActionIndex(MenuEntry[] entries, MenuAction action)
     {
         if (entries == null)
             return -1;
-
         for (int i = 0; i < entries.Length; i++)
-        {
             if (entries[i] != null && entries[i].action == action)
                 return i;
-        }
+        return -1;
+    }
 
+    private int FindControlsEntryIndex(ControlsEntryAction action)
+    {
+        if (controlsEntries == null)
+            return -1;
+        for (int i = 0; i < controlsEntries.Length; i++)
+            if (controlsEntries[i] != null && controlsEntries[i].action == action)
+                return i;
         return -1;
     }
 

@@ -22,6 +22,7 @@ public class DifficultySelector : MonoBehaviour
     public Image levelImage;
     public TMP_Text levelDescriptionText;
     public TMP_Text normalText;
+
     [Header("FOV text")]
     public TMP_Text fovText;
     public float fovStep = 5f;
@@ -35,41 +36,73 @@ public class DifficultySelector : MonoBehaviour
     public Color unselectedColor = Color.white;
     public Color lockedColor = Color.gray;
     public string gameSceneName = "KKartOG";
+
     private static readonly Difficulty[] DifficultyOptions = { Difficulty.Easy, Difficulty.Normal, Difficulty.Hard };
     private static readonly string[] DifficultyNames = { "EASY", "NORMAL", "HARD" };
     private Stage stage = Stage.Level;
-    private int levelIndex = 0;
+    private int levelIndex;
     private int difficultyIndex = 1;
-    private bool firstPerson = false;
+    private bool firstPerson;
     private float currentFov;
+    private KuuppaKartControls controls;
 
-    void Start()
+    private void Start()
     {
+        controls = KuuppaKartControls.EnsureInstance();
         currentFov = startingFov;
         RefreshAll();
     }
 
-    void Update()
+    private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.A)) Change(-1);
-        else if (Input.GetKeyDown(KeyCode.D)) Change(1);
-        else if (Input.GetKeyDown(KeyCode.W)) Confirm();
-        else if (Input.GetKeyDown(KeyCode.S)) Back();
+        if (controls == null)
+            controls = KuuppaKartControls.EnsureInstance();
+
+        int direction = controls.MenuHorizontalDirectionThisFrame;
+        if (direction == 0)
+            direction = controls.MenuSelectionDirectionThisFrame;
+        if (direction != 0)
+            Change(direction);
+        else if (controls.MenuConfirmPressed)
+            Confirm();
+        else if (controls.MenuBackPressed)
+            Back();
     }
 
-    private void Change(int dir)
+    public void MousePrevious()
+    {
+        Change(-1);
+    }
+
+    public void MouseNext()
+    {
+        Change(1);
+    }
+
+    public void MouseConfirm()
+    {
+        Confirm();
+    }
+
+    public void MouseBack()
+    {
+        Back();
+    }
+
+    private void Change(int direction)
     {
         switch (stage)
         {
             case Stage.Level:
-                if (levels == null || levels.Length == 0) return;
-                levelIndex = (levelIndex + dir + levels.Length) % levels.Length;
+                if (levels == null || levels.Length == 0)
+                    return;
+                levelIndex = (levelIndex + direction + levels.Length) % levels.Length;
                 break;
             case Stage.Difficulty:
-                difficultyIndex = (difficultyIndex + dir + DifficultyOptions.Length) % DifficultyOptions.Length;
+                difficultyIndex = (difficultyIndex + direction + DifficultyOptions.Length) % DifficultyOptions.Length;
                 break;
             case Stage.Fov:
-                currentFov = Mathf.Clamp(currentFov + dir * fovStep, minFov, maxFov);
+                currentFov = Mathf.Clamp(currentFov + direction * fovStep, minFov, maxFov);
                 break;
             case Stage.CameraView:
                 firstPerson = !firstPerson;
@@ -81,7 +114,6 @@ public class DifficultySelector : MonoBehaviour
     private void Confirm()
     {
         EnsureDifficultyManager();
-
         switch (stage)
         {
             case Stage.Level:
@@ -107,7 +139,8 @@ public class DifficultySelector : MonoBehaviour
 
     private void Back()
     {
-        if (stage == Stage.Level) return;
+        if (stage == Stage.Level)
+            return;
         stage--;
         RefreshAll();
     }
@@ -115,15 +148,20 @@ public class DifficultySelector : MonoBehaviour
     private void StartGame()
     {
         string scene = gameSceneName;
-        if (levels != null && levels.Length > 0 && !string.IsNullOrEmpty(levels[levelIndex].sceneName))
+        if (levels != null && levels.Length > 0 && levelIndex >= 0 && levelIndex < levels.Length && !string.IsNullOrEmpty(levels[levelIndex].sceneName))
             scene = levels[levelIndex].sceneName;
 
+        if (!Application.CanStreamedLevelBeLoaded(scene))
+        {
+            Debug.LogError("DifficultySelector: The selected gameplay scene is not included in Build Settings: " + scene);
+            return;
+        }
         SceneManager.LoadScene(scene);
     }
 
     private void RefreshAll()
     {
-        if (levels != null && levels.Length > 0)
+        if (levels != null && levels.Length > 0 && levelIndex >= 0 && levelIndex < levels.Length)
         {
             LevelInfo level = levels[levelIndex];
             if (levelNameText != null) levelNameText.text = level.displayName;
@@ -148,8 +186,8 @@ public class DifficultySelector : MonoBehaviour
 
     private void StyleText(TMP_Text text, Stage owner)
     {
-        if (text == null) return;
-
+        if (text == null)
+            return;
         if (stage == owner)
         {
             text.color = selectedColor;
@@ -171,8 +209,8 @@ public class DifficultySelector : MonoBehaviour
     {
         if (DifficultyManager.Instance == null)
         {
-            GameObject go = new GameObject("DifficultyManager");
-            go.AddComponent<DifficultyManager>();
+            GameObject host = new GameObject("DifficultyManager");
+            host.AddComponent<DifficultyManager>();
         }
     }
 }
