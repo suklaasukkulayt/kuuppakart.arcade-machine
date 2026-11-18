@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(-900)]
 public sealed class KuuppaKartPauseMenu : MonoBehaviour
 {
     public enum MenuAction
@@ -72,6 +73,10 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
     private readonly Dictionary<TMP_Text, Color> originalTextColors = new Dictionary<TMP_Text, Color>();
     private readonly List<Vector2Int> availableResolutions = new List<Vector2Int>();
     private KuuppaKartControls controls;
+    private ScrollRect controlsScrollRect;
+    private Vector2 controlsScrollTarget;
+    private bool controlsScrollTargetValid;
+    [SerializeField] private float controlsScrollSpeed = 1500f;
     private int mainSelection;
     private int settingsSelection;
     private int controlsSelection;
@@ -100,6 +105,8 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         }
 
         controls = KuuppaKartControls.EnsureInstance();
+        if (controlsPanel != null)
+            controlsScrollRect = controlsPanel.GetComponentInChildren<ScrollRect>(true);
         if (menuRaycaster == null)
         {
             Canvas parentCanvas = GetComponentInParent<Canvas>();
@@ -125,8 +132,25 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
             Time.timeScale = previousTimeScale > 0f ? previousTimeScale : 1f;
     }
 
+    private void LateUpdate()
+    {
+        ApplyMouseInput();
+        if (!menuOpen || !controlsOpen || !controlsScrollTargetValid || controlsScrollRect == null || controlsScrollRect.content == null)
+            return;
+
+        RectTransform content = controlsScrollRect.content;
+        Vector2 next = Vector2.MoveTowards(content.anchoredPosition, controlsScrollTarget, controlsScrollSpeed * Time.unscaledDeltaTime);
+        content.anchoredPosition = next;
+        if ((next - controlsScrollTarget).sqrMagnitude <= 0.01f)
+        {
+            content.anchoredPosition = controlsScrollTarget;
+            controlsScrollTargetValid = false;
+        }
+    }
+
     private void Update()
     {
+        ApplyMouseInput();
         if (!GameManager.IsGameplayScene(SceneManager.GetActiveScene().name))
             return;
 
@@ -168,7 +192,9 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         else if (controlsOpen)
         {
             ControlsEntry selected = GetSelectedControlsEntry();
-            if (selected != null && (selected.action == ControlsEntryAction.Profile || selected.action == ControlsEntryAction.Device) && horizontalDirection != 0)
+            if (controls.Profile != KuuppaKartControlProfile.Arcade && selected != null
+                && (selected.action == ControlsEntryAction.Profile || selected.action == ControlsEntryAction.Device)
+                && horizontalDirection != 0)
                 AdjustControlsValue(selected, horizontalDirection);
             else if (selectionDirection != 0)
                 MoveControlsSelection(selectionDirection);
@@ -330,6 +356,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         controlsSelection = Mathf.Max(0, FindControlsEntryIndex(ControlsEntryAction.Profile));
         RefreshControlsValues();
         RefreshHighlights();
+        ScrollControlsSelectionIntoView(true);
     }
 
     private void QuitToMainMenu()
@@ -351,9 +378,15 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
     private void MoveSelection(int direction)
     {
-        if (mainEntries == null || mainEntries.Length == 0)
+        MenuEntry[] entries = settingsOpen ? settingsEntries : mainEntries;
+        if (entries == null || entries.Length == 0)
             return;
-        mainSelection = WrapIndex(mainSelection + direction, mainEntries.Length);
+
+        if (settingsOpen)
+            settingsSelection = WrapIndex(settingsSelection + direction, entries.Length);
+        else
+            mainSelection = WrapIndex(mainSelection + direction, entries.Length);
+
         RefreshHighlights();
     }
 
@@ -363,6 +396,69 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
             return;
         controlsSelection = WrapIndex(controlsSelection + direction, controlsEntries.Length);
         RefreshHighlights();
+        ScrollControlsSelectionIntoView();
+    }
+
+    private void ScrollControlsSelectionIntoView(bool immediate = false)
+    {
+        if (controlsScrollRect == null || controlsScrollRect.content == null)
+            return;
+
+        ControlsEntry entry = GetSelectedControlsEntry();
+        if (entry == null || entry.button == null)
+            return;
+
+        RectTransform viewport = controlsScrollRect.viewport != null
+            ? controlsScrollRect.viewport
+            : controlsScrollRect.transform as RectTransform;
+        RectTransform content = controlsScrollRect.content;
+        RectTransform selected = entry.button.transform as RectTransform;
+        if (viewport == null || content == null || selected == null)
+            return;
+
+        Canvas.ForceUpdateCanvases();
+        Vector3[] corners = new Vector3[4];
+        selected.GetWorldCorners(corners);
+        float itemBottom = float.PositiveInfinity;
+        float itemTop = float.NegativeInfinity;
+        for (int i = 0; i < corners.Length; i++)
+        {
+            float y = viewport.InverseTransformPoint(corners[i]).y;
+            itemBottom = Mathf.Min(itemBottom, y);
+            itemTop = Mathf.Max(itemTop, y);
+        }
+
+        Rect viewportRect = viewport.rect;
+        float deltaY = 0f;
+        if (itemTop > viewportRect.yMax)
+            deltaY = viewportRect.yMax - itemTop;
+        else if (itemBottom < viewportRect.yMin)
+            deltaY = viewportRect.yMin - itemBottom;
+
+        if (Mathf.Abs(deltaY) < 0.5f)
+        {
+            if (immediate)
+            {
+                controlsScrollTarget = content.anchoredPosition;
+                content.anchoredPosition = controlsScrollTarget;
+            }
+            controlsScrollTargetValid = false;
+            return;
+        }
+
+        Vector2 target = content.anchoredPosition + new Vector2(0f, deltaY);
+        float maxScroll = Mathf.Max(0f, content.rect.height - viewport.rect.height);
+        target.y = Mathf.Clamp(target.y, 0f, maxScroll);
+        controlsScrollTarget = target;
+        controlsScrollTargetValid = true;
+        controlsScrollRect.velocity = Vector2.zero;
+
+        if (immediate)
+        {
+            content.anchoredPosition = controlsScrollTarget;
+            controlsScrollTargetValid = false;
+            Canvas.ForceUpdateCanvases();
+        }
     }
 
     private void ConfirmSelection()
@@ -753,7 +849,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
     private void ApplyMouseInput()
     {
         if (menuRaycaster != null)
-            menuRaycaster.enabled = menuOpen && controls != null && controls.MouseMenuInputEnabled;
+            menuRaycaster.enabled = menuOpen && controls != null && (controls.MouseMenuInputEnabled || controls.TouchInputMode);
     }
 
     private MenuEntry GetSelectedMenuEntry()

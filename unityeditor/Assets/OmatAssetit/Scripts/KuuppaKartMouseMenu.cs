@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(-900)]
 [RequireComponent(typeof(GraphicRaycaster))]
 public sealed class KuuppaKartMouseMenu : MonoBehaviour
 {
@@ -13,11 +14,11 @@ public sealed class KuuppaKartMouseMenu : MonoBehaviour
         controls = KuuppaKartControls.EnsureInstance();
     }
 
-    private void LateUpdate()
+    private void Update()
     {
         if (controls == null)
             controls = KuuppaKartControls.EnsureInstance();
-        bool shouldEnable = controls.MouseMenuInputEnabled;
+        bool shouldEnable = controls.MouseMenuInputEnabled || controls.TouchInputMode;
         if (raycaster.enabled != shouldEnable)
             raycaster.enabled = shouldEnable;
     }

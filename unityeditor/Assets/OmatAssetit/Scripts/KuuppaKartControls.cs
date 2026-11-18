@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Utilities;
+using UnityEngine.SceneManagement;
 
 public enum KuuppaKartControlProfile
 {
@@ -40,12 +41,15 @@ public sealed class KuuppaKartControls : MonoBehaviour
     public static KuuppaKartControls Instance { get; private set; }
     public KuuppaKartControlProfile Profile { get; private set; }
     public bool MouseMenuInputEnabled { get; private set; }
+    public bool TouchInputMode { get; private set; }
     public bool IsRebinding => activeRebinding != null;
 
     private const string ProfileKey = "KuuppaKart_ControlProfile";
     private const string MouseKey = "KuuppaKart_MouseMenuInput";
     private readonly Dictionary<KuuppaKartAction, InputAction> actions = new Dictionary<KuuppaKartAction, InputAction>();
+    private readonly List<GameObject> onScreenButtonRoots = new List<GameObject>();
     private InputActionRebindingExtensions.RebindingOperation activeRebinding;
+    private bool onScreenButtonsVisible;
 
     private void Awake()
     {
@@ -60,6 +64,13 @@ public sealed class KuuppaKartControls : MonoBehaviour
         Profile = (KuuppaKartControlProfile)Mathf.Clamp(PlayerPrefs.GetInt(ProfileKey, (int)defaultProfile), 0, 2);
         MouseMenuInputEnabled = PlayerPrefs.GetInt(MouseKey, defaultMouseMenuInput ? 1 : 0) != 0;
         BuildActions();
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        HandleSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
+    }
+
+    private void Update()
+    {
+        DetectInputDeviceForOnScreenButtons();
     }
 
     private void OnDestroy()
@@ -67,9 +78,103 @@ public sealed class KuuppaKartControls : MonoBehaviour
         if (Instance != this)
             return;
 
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
         CancelRebind();
         DisposeActions();
         Instance = null;
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        onScreenButtonRoots.Clear();
+        GameObject[] sceneObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+        for (int i = 0; i < sceneObjects.Length; i++)
+        {
+            GameObject candidate = sceneObjects[i];
+            if (candidate == null || candidate.name != "Buttons" || !candidate.scene.IsValid() || candidate.scene.handle != scene.handle)
+                continue;
+            if (candidate.GetComponent<RectTransform>() == null)
+                continue;
+            onScreenButtonRoots.Add(candidate);
+            candidate.SetActive(onScreenButtonsVisible);
+        }
+    }
+
+    private void DetectInputDeviceForOnScreenButtons()
+    {
+        bool touchInput = false;
+        Touchscreen touchscreen = Touchscreen.current;
+        if (touchscreen != null)
+        {
+            touchInput = touchscreen.primaryTouch.press.wasPressedThisFrame
+                || touchscreen.primaryTouch.delta.ReadValue().sqrMagnitude > 0.01f;
+        }
+
+        bool keyboardInput = Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame;
+        bool mouseInput = false;
+        Mouse mouse = Mouse.current;
+        if (mouse != null)
+        {
+            mouseInput = mouse.delta.ReadValue().sqrMagnitude > 0.01f
+                || mouse.scroll.ReadValue().sqrMagnitude > 0.01f
+                || mouse.leftButton.wasPressedThisFrame
+                || mouse.rightButton.wasPressedThisFrame
+                || mouse.middleButton.wasPressedThisFrame;
+        }
+
+        bool gamepadInput = false;
+        Gamepad gamepad = Gamepad.current;
+        if (gamepad != null)
+        {
+            gamepadInput = gamepad.leftStick.ReadValue().sqrMagnitude > 0.04f
+                || gamepad.rightStick.ReadValue().sqrMagnitude > 0.04f
+                || gamepad.dpad.ReadValue().sqrMagnitude > 0f
+                || gamepad.buttonSouth.wasPressedThisFrame
+                || gamepad.buttonEast.wasPressedThisFrame
+                || gamepad.buttonWest.wasPressedThisFrame
+                || gamepad.buttonNorth.wasPressedThisFrame
+                || gamepad.leftShoulder.wasPressedThisFrame
+                || gamepad.rightShoulder.wasPressedThisFrame
+                || gamepad.startButton.wasPressedThisFrame
+                || gamepad.selectButton.wasPressedThisFrame
+                || gamepad.leftTrigger.ReadValue() > 0.2f
+                || gamepad.rightTrigger.ReadValue() > 0.2f;
+        }
+
+        if (keyboardInput || gamepadInput)
+        {
+            TouchInputMode = false;
+            SetOnScreenButtonsVisible(false);
+        }
+        else if (touchInput)
+        {
+            TouchInputMode = true;
+            SetOnScreenButtonsVisible(true);
+        }
+        else if (mouseInput)
+        {
+            TouchInputMode = false;
+            SetOnScreenButtonsVisible(true);
+        }
+    }
+
+    private void SetOnScreenButtonsVisible(bool visible)
+    {
+        if (onScreenButtonsVisible == visible)
+            return;
+
+        onScreenButtonsVisible = visible;
+        for (int i = onScreenButtonRoots.Count - 1; i >= 0; i--)
+        {
+            GameObject root = onScreenButtonRoots[i];
+            if (root == null)
+            {
+                onScreenButtonRoots.RemoveAt(i);
+                continue;
+            }
+            if (root.activeSelf != visible)
+                root.SetActive(visible);
+        }
     }
 
     public static KuuppaKartControls EnsureInstance()

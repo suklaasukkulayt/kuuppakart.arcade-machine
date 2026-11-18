@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 1109
   m_ShowMode: 4
-  m_Title: Inspector
+  m_Title: Scene
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -425,7 +425,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 
       m_LastClickedID: 0
-      m_ExpandedIDs: 680ffeff6e21fefffa2bfeffd832feff905afeff685bfeff765bfeff905bfeffa45bfeffe463feffe663feff4cb9feff40bdfeff98befeff38c0feffacc5feffaec5feffb4c5feffb6c5feff3ce4feff3ee5feff9640ffff9047fffff248ffff2e4affffc44cffff0c4dffffb24effff5a7fffff7681ffffe4faffffc8440100d24401003ec50100ecdc010070dd010050e1010072e601003ee80100f4e80100
+      m_ExpandedIDs: 1e6fffff6e74ffffde77ffff8680ffff4c84ffff6e88ffffac8effffe493ffff3abaffff1cbbffffe4faffffc2b90000bebb0000dabc000034bd0000c4bd00005cbe0000acbf0000d6c6000060c70000d6da0000d8de000070df0000c0e00000a2e10000eae70000
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -862,9 +862,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 541.20856, y: 256.0607, z: 0.8387818}
+    m_Target: {x: 500.7622, y: 295.54077, z: 0.5599229}
     speed: 2
-    m_Value: {x: 541.20856, y: 256.0607, z: 0.8387818}
+    m_Value: {x: 500.7622, y: 295.54077, z: 0.5599229}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -914,9 +914,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 152.15732
+    m_Target: 388.76892
     speed: 2
-    m_Value: 152.15732
+    m_Value: 388.76892
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -1090,7 +1090,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Scenes
+    - Assets/OmatAssetit/Scripts
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1100,16 +1100,16 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 67
   m_LastFolders:
-  - Assets/Scenes
+  - Assets/OmatAssetit/Scripts
   m_LastFoldersGridSize: 67
   m_LastProjectPath: C:\UNITY\ajopeli\unityeditor
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 259}
-    m_SelectedIDs: 32dd0000
-    m_LastClickedID: 56626
-    m_ExpandedIDs: 0000000022d7000024d7000026d7000028d700002ad700002cd700002ed7000030d7000032d7000034d7000036d7000038d700003ad700003cd700003ed7000040d7000042d7000044d7000046d7000048d700004ad700004cd700004ed7000050d7000052d7000054d70000
+    scrollPos: {x: 0, y: 199}
+    m_SelectedIDs: d6d70000
+    m_LastClickedID: 55254
+    m_ExpandedIDs: 0000000044f4000046f4000048f400004af400004cf400004ef4000050f4000052f4000054f4000056f4000058f400005af400005cf400005ef4000060f4000062f4000064f4000066f4000068f400006af400006cf400006ef4000070f4000072f4000074f4000076f40000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1138,7 +1138,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 1080}
     m_SelectedIDs: fcb00000
     m_LastClickedID: 45308
-    m_ExpandedIDs: 0000000022d7000024d7000026d7000028d700002ad700002cd700002ed7000030d7000032d7000034d7000036d7000038d700003ad700003cd700003ed7000040d7000042d7000044d7000046d7000048d700004ad700004cd700004ed7000050d7000052d7000054d70000
+    m_ExpandedIDs: 0000000044f4000046f4000048f400004af400004cf400004ef4000050f4000052f4000054f4000056f4000058f400005af400005cf400005ef4000060f4000062f4000064f4000066f4000068f400006af400006cf400006ef4000070f4000072f4000074f4000076f40000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1313,7 +1313,7 @@ MonoBehaviour:
     m_ControlHash: -371814159
     m_PrefName: Preview_InspectorPreview
   m_LastInspectedObjectInstanceID: -1
-  m_LastVerticalScrollValue: 54
+  m_LastVerticalScrollValue: 0
   m_GlobalObjectId: 
   m_InspectorMode: 0
   m_LockTracker:
