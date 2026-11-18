@@ -47,6 +47,8 @@ public sealed class KuuppaKartControls : MonoBehaviour
     private const string ProfileKey = "KuuppaKart_ControlProfile";
     private const string MouseKey = "KuuppaKart_MouseMenuInput";
     private readonly Dictionary<KuuppaKartAction, InputAction> actions = new Dictionary<KuuppaKartAction, InputAction>();
+    private readonly HashSet<KuuppaKartAction> onScreenHeld = new HashSet<KuuppaKartAction>();
+    private readonly HashSet<KuuppaKartAction> onScreenPressedPending = new HashSet<KuuppaKartAction>();
     private readonly List<GameObject> onScreenButtonRoots = new List<GameObject>();
     private InputActionRebindingExtensions.RebindingOperation activeRebinding;
     private bool onScreenButtonsVisible;
@@ -210,17 +212,31 @@ public sealed class KuuppaKartControls : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    public float MoveVertical => Read(KuuppaKartAction.Accelerate) - Read(KuuppaKartAction.Brake);
-    public float MoveHorizontal => Read(KuuppaKartAction.TurnRight) - Read(KuuppaKartAction.TurnLeft);
+    public float MoveVertical => Mathf.Clamp(Read(KuuppaKartAction.Accelerate) - Read(KuuppaKartAction.Brake) + (onScreenHeld.Contains(KuuppaKartAction.Accelerate) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.Brake) ? 1f : 0f), -1f, 1f);
+    public float MoveHorizontal => Mathf.Clamp(Read(KuuppaKartAction.TurnRight) - Read(KuuppaKartAction.TurnLeft) + (onScreenHeld.Contains(KuuppaKartAction.TurnRight) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.TurnLeft) ? 1f : 0f), -1f, 1f);
+    public void SetOnScreenButton(KuuppaKartAction action, bool pressed)
+    {
+        if (pressed)
+        {
+            if (onScreenHeld.Add(action))
+                onScreenPressedPending.Add(action);
+        }
+        else
+        {
+            onScreenHeld.Remove(action);
+        }
+}
 
     public bool WasPressed(KuuppaKartAction action)
     {
-        return actions.TryGetValue(action, out InputAction inputAction) && inputAction.WasPressedThisFrame();
+        bool inputPressed = actions.TryGetValue(action, out InputAction inputAction) && inputAction.WasPressedThisFrame();
+        bool touchPressed = onScreenPressedPending.Remove(action);
+        return inputPressed || touchPressed;
     }
 
     public bool IsPressed(KuuppaKartAction action)
     {
-        return actions.TryGetValue(action, out InputAction inputAction) && inputAction.IsPressed();
+        return (actions.TryGetValue(action, out InputAction inputAction) && inputAction.IsPressed()) || onScreenHeld.Contains(action);
     }
 
     public int MenuSelectionDirectionThisFrame

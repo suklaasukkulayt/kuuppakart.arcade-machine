@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 [DefaultExecutionOrder(-900)]
 public sealed class KuuppaKartPauseMenu : MonoBehaviour
@@ -72,6 +73,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
     private readonly Dictionary<Graphic, Color> originalGraphicColors = new Dictionary<Graphic, Color>();
     private readonly Dictionary<TMP_Text, Color> originalTextColors = new Dictionary<TMP_Text, Color>();
     private readonly List<Vector2Int> availableResolutions = new List<Vector2Int>();
+    private readonly List<GameObject> menuButtonsRoots = new List<GameObject>();
     private KuuppaKartControls controls;
     private ScrollRect controlsScrollRect;
     private Vector2 controlsScrollTarget;
@@ -105,6 +107,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         }
 
         controls = KuuppaKartControls.EnsureInstance();
+        CacheMenuButtons();
         if (controlsPanel != null)
             controlsScrollRect = controlsPanel.GetComponentInChildren<ScrollRect>(true);
         if (menuRaycaster == null)
@@ -118,12 +121,45 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         CacheEntries(settingsEntries);
         CacheControlsEntries(controlsEntries);
         menuRoot.SetActive(false);
+        SetMenuButtonsVisible(false);
         mainPanel.SetActive(true);
         settingsPanel.SetActive(false);
         if (controlsPanel != null)
             controlsPanel.SetActive(false);
         ApplyMouseInput();
         Time.timeScale = 1f;
+    }
+
+    private void CacheMenuButtons()
+    {
+        menuButtonsRoots.Clear();
+        GameObject[] sceneObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+
+        for (int i = 0; i < sceneObjects.Length; i++)
+        {
+            GameObject candidate = sceneObjects[i];
+            if (candidate == null || (candidate.name != "MenuButtons" && candidate.name != "Menu Buttons") || !candidate.scene.IsValid() || candidate.scene.handle != gameObject.scene.handle || candidate.GetComponent<RectTransform>() == null)
+                continue;
+
+            menuButtonsRoots.Add(candidate);
+        }
+    }
+
+    private void SetMenuButtonsVisible(bool visible)
+    {
+        for (int i = menuButtonsRoots.Count - 1; i >= 0; i--)
+        {
+            GameObject root = menuButtonsRoots[i];
+
+            if (root == null)
+            {
+                menuButtonsRoots.RemoveAt(i);
+                continue;
+            }
+
+            if (root.activeSelf != visible)
+                root.SetActive(visible);
+        }
     }
 
     private void OnDestroy()
@@ -229,6 +265,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
                     entry.label = entry.button.GetComponentInChildren<TMP_Text>();
                 int index = i;
                 entry.button.onClick.AddListener(() => HandleMenuClick(index));
+                RegisterPointerEnter(entry.button, () => HandleMenuHover(index));
             }
 
             CacheGraphicAndText(entry.highlightGraphic, entry.label, entry.value);
@@ -256,10 +293,63 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
                     entry.label = entry.button.GetComponentInChildren<TMP_Text>();
                 int index = i;
                 entry.button.onClick.AddListener(() => HandleControlsClick(index));
+                RegisterPointerEnter(entry.button, () => HandleControlsHover(index));
             }
 
             CacheGraphicAndText(entry.highlightGraphic, entry.label, entry.value);
         }
+    }
+
+    private void RegisterPointerEnter(Button button, Action callback)
+    {
+        if (button == null)
+            return;
+
+        EventTrigger trigger = button.GetComponent<EventTrigger>();
+
+        if (trigger == null)
+            trigger = button.gameObject.AddComponent<EventTrigger>();
+
+        if (trigger.triggers == null)
+            trigger.triggers = new List<EventTrigger.Entry>();
+
+        EventTrigger.Entry entry = new EventTrigger.Entry();
+        entry.eventID = EventTriggerType.PointerEnter;
+        entry.callback.AddListener(_ => callback());
+
+        trigger.triggers.Add(entry);
+    }
+
+    private bool PointerMenuInputEnabled => controls != null && (controls.MouseMenuInputEnabled || controls.TouchInputMode);
+
+    private void HandleMenuHover(int index)
+    {
+        if (!menuOpen || controlsOpen || !PointerMenuInputEnabled)
+            return;
+
+        if (settingsOpen)
+        {
+            if (settingsSelection != index)
+                editingSetting = false;
+
+            settingsSelection = index;
+        }
+        else
+        {
+            mainSelection = index;
+        }
+
+        RefreshHighlights();
+    }
+
+    private void HandleControlsHover(int index)
+    {
+        if (!menuOpen || !controlsOpen || !PointerMenuInputEnabled)
+            return;
+
+        controlsSelection = index;
+
+        RefreshHighlights();
     }
 
     private void CacheGraphicAndText(Graphic highlight, TMP_Text label, TMP_Text value)
@@ -282,6 +372,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         editingSetting = false;
         mainSelection = Mathf.Max(0, FindActionIndex(mainEntries, MenuAction.Resume));
         menuRoot.SetActive(true);
+        SetMenuButtonsVisible(true);
         ShowMainPanelOnly();
         ApplyMouseInput();
         RefreshHighlights();
@@ -290,6 +381,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
     private void ResumeGame()
     {
         menuRoot.SetActive(false);
+        SetMenuButtonsVisible(false);
         menuOpen = false;
         settingsOpen = false;
         controlsOpen = false;
@@ -373,6 +465,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         controlsOpen = false;
         editingSetting = false;
         menuRoot.SetActive(false);
+        SetMenuButtonsVisible(false);
         SceneManager.LoadScene("StartScreen");
     }
 
@@ -579,7 +672,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
     private void HandleMenuClick(int index)
     {
-        if (!menuOpen || !controls.MouseMenuInputEnabled)
+        if (!menuOpen || !PointerMenuInputEnabled)
             return;
         if (settingsOpen)
             settingsSelection = index;
@@ -590,7 +683,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
 
     private void HandleControlsClick(int index)
     {
-        if (!menuOpen || !controls.MouseMenuInputEnabled)
+        if (!menuOpen || !PointerMenuInputEnabled)
             return;
         controlsSelection = index;
         ConfirmControlsSelection();

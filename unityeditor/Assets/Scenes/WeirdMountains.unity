@@ -3327,66 +3327,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 852366238}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &431459666
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 431459667}
-  - component: {fileID: 431459668}
-  m_Layer: 0
-  m_Name: RoadSystem
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &431459667
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 431459666}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 57.46, y: 0, z: 54.56}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 800418968}
-  - {fileID: 1123566217}
-  m_Father: {fileID: 768890353}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &431459668
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 431459666}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b620528168e7c6c4190189510f83124f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Barmetler.RoadSystem.Runtime::Barmetler.RoadSystem.RoadSystem
-  intersections: []
-  roads:
-  - {fileID: 800418969}
-  - {fileID: 1123566218}
-  graph:
-    roadSystem: {fileID: 431459668}
-    nodes: []
-    weights:
-      width: 0
-      height: 0
-      array: []
-  ShowDebugInfo: 1
-  ShowEdgeWeights: 1
-  DistanceFactor: 1000
 --- !u!1001 &470731693
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5927,12 +5867,11 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 768890350}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 431459667}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &768890354
@@ -501297,117 +501236,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 852366238}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &800418967
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 800418968}
-  - component: {fileID: 800418969}
-  m_Layer: 0
-  m_Name: Road
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &800418968
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 800418967}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 431459667}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &800418969
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 800418967}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cddc1941501135645b2a8b35032f1fc6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Barmetler.RoadSystem.Runtime::Barmetler.RoadSystem.Road
-  start: {fileID: 0}
-  end: {fileID: 0}
-  direction: 0
-  autoSetControlPoints: 0
-  points:
-  - {x: 36.666183, y: 0, z: 24.824986}
-  - {x: 36.666183, y: 0, z: 25.034273}
-  - {x: 39.456802, y: 0.016700856, z: 16.421663}
-  - {x: 37.00618, y: -0.0008149869, z: 15.049137}
-  - {x: 36.531925, y: -0.004204715, z: 14.783521}
-  - {x: 38.014748, y: 0.0024599861, z: 12.886643}
-  - {x: 37.91137, y: -0.0023241518, z: 10.886929}
-  - {x: 37.77907, y: -0.008446556, z: 8.327834}
-  - {x: 36.06676, y: -0.026177468, z: 5.5476913}
-  - {x: 35.229645, y: -0.031247063, z: 5.2388}
-  - {x: 32.870136, y: -0.045536306, z: 4.368154}
-  - {x: 30.766773, y: -0.028736703, z: -1.4649744}
-  - {x: 27.711464, y: -0.039023492, z: -1.464901}
-  - {x: 26.084723, y: -0.044500504, z: -1.4648618}
-  - {x: 25.263744, y: -0.10051847, z: 2.3570263}
-  - {x: 23.564796, y: -0.10451578, z: 2.7720757}
-  - {x: 21.961954, y: -0.10828698, z: 3.1636467}
-  - {x: 18.70336, y: -0.0007508341, z: -2.6148283}
-  - {x: 17.095741, y: 0.0012454372, z: -2.1940613}
-  - {x: 13.527403, y: 0.005676448, z: -1.2601091}
-  - {x: 10.58117, y: 1.1168118, z: 1.3620305}
-  - {x: 8.427124, y: 1.1233017, z: 3.7174606}
-  - {x: 6.369481, y: 1.1295013, z: 5.967475}
-  - {x: 5.030251, y: 0.029654266, z: 7.970317}
-  - {x: 4.7481728, y: 0.09119244, z: 8.184616}
-  - {x: 4.5983734, y: 0.123872615, z: 8.298421}
-  - {x: -4.2382846, y: 1.4112804, z: 8.934839}
-  - {x: -4.51173, y: 1.4536965, z: 8.9739685}
-  normals:
-  - {x: 0, y: 1, z: 0}
-  - {x: -0.0071152686, y: 0.99997467, z: -0.000028610257}
-  - {x: -0.007121404, y: 0.99997264, z: -0.002022578}
-  - {x: -0.005316547, y: 0.9999839, z: -0.0019866396}
-  - {x: -0.0033533906, y: 0.9999809, z: 0.005181511}
-  - {x: 0.0011167637, y: 0.9999021, z: 0.013944795}
-  - {x: 0.0055021057, y: 0.9998558, z: 0.01606831}
-  - {x: 0.04537329, y: 0.9982221, z: 0.03865094}
-  - {x: 0.16089696, y: 0.98545015, z: -0.05477341}
-  - {x: 0.1511198, y: 0.98839617, z: -0.015353991}
-  angles: []
-  bounds:
-    m_Center: {x: 16.750628, y: 0.67459035, z: 11.315462}
-    m_Extent: {x: 21.262358, y: 0.77910614, z: 13.509523}
-  boundingBoxes:
-  - m_Center: {x: 37.339584, y: 0.0031631044, z: 19.937061}
-    m_Extent: {x: 0.6734009, y: 0.0039780913, z: 4.887924}
-  - m_Center: {x: 37.458775, y: -0.0014253046, z: 12.968033}
-    m_Extent: {x: 0.45259476, y: 0.00089884724, z: 2.0811043}
-  - m_Center: {x: 36.570507, y: -0.016785607, z: 8.062864}
-    m_Extent: {x: 1.3408623, y: 0.014461456, z: 2.8240643}
-  - m_Center: {x: 31.470554, y: -0.035135277, z: 1.8869495}
-    m_Extent: {x: 3.7590904, y: 0.0038882159, z: 3.3518505}
-  - m_Center: {x: 25.63813, y: -0.07176964, z: 0.65358734}
-    m_Extent: {x: 2.0733337, y: 0.032746144, z: 2.1184883}
-  - m_Center: {x: 20.330269, y: -0.051635172, z: 0.2890072}
-    m_Extent: {x: 3.2345276, y: 0.05288061, z: 2.4830685}
-  - m_Center: {x: 12.761433, y: 0.56227356, z: 0.7616997}
-    m_Extent: {x: 4.3343086, y: 0.5610281, z: 2.955761}
-  - m_Center: {x: 6.5876484, y: 0.60724705, z: 5.9510384}
-    m_Extent: {x: 1.8394756, y: 0.51605463, z: 2.2335777}
-  - m_Center: {x: 0.11822128, y: 0.7724444, z: 8.579292}
-    m_Extent: {x: 4.6299515, y: 0.681252, z: 0.3946762}
 --- !u!1 &811851933
 GameObject:
   m_ObjectHideFlags: 0
@@ -502713,6 +502541,7 @@ MonoBehaviour:
   menuRoot: {fileID: 2057728234}
   mainPanel: {fileID: 1693101146}
   settingsPanel: {fileID: 1124609529}
+  controlsPanel: {fileID: 0}
   menuRaycaster: {fileID: 829813073}
   mainEntries:
   - button: {fileID: 1253121652}
@@ -502766,9 +502595,11 @@ MonoBehaviour:
     label: {fileID: 732681293}
     value: {fileID: 0}
     action: 9
+  controlsEntries: []
   selectedBackgroundColor: {r: 0.05, g: 0.42, b: 0.61, a: 1}
   selectedTextColor: {r: 1, g: 0.86, b: 0.25, a: 1}
   editingTextColor: {r: 0.25, g: 1, b: 0.65, a: 1}
+  controlsScrollSpeed: 1500
 --- !u!1 &956551277
 GameObject:
   m_ObjectHideFlags: 0
@@ -504339,117 +504170,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1102199878}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1123566216
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1123566217}
-  - component: {fileID: 1123566218}
-  m_Layer: 0
-  m_Name: Road (1)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1123566217
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1123566216}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 431459667}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1123566218
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1123566216}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cddc1941501135645b2a8b35032f1fc6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Barmetler.RoadSystem.Runtime::Barmetler.RoadSystem.Road
-  start: {fileID: 0}
-  end: {fileID: 0}
-  direction: 0
-  autoSetControlPoints: 0
-  points:
-  - {x: 36.666183, y: 0, z: 24.824986}
-  - {x: 36.666183, y: 0, z: 25.034273}
-  - {x: 39.456802, y: 0.016700856, z: 16.421663}
-  - {x: 37.00618, y: -0.0008149869, z: 15.049137}
-  - {x: 36.531925, y: -0.004204715, z: 14.783521}
-  - {x: 38.014748, y: 0.0024599861, z: 12.886643}
-  - {x: 37.91137, y: -0.0023241518, z: 10.886929}
-  - {x: 37.77907, y: -0.008446556, z: 8.327834}
-  - {x: 36.06676, y: -0.026177468, z: 5.5476913}
-  - {x: 35.229645, y: -0.031247063, z: 5.2388}
-  - {x: 32.870136, y: -0.045536306, z: 4.368154}
-  - {x: 30.766773, y: -0.028736703, z: -1.4649744}
-  - {x: 27.711464, y: -0.039023492, z: -1.464901}
-  - {x: 26.084723, y: -0.044500504, z: -1.4648618}
-  - {x: 25.263744, y: -0.10051847, z: 2.3570263}
-  - {x: 23.564796, y: -0.10451578, z: 2.7720757}
-  - {x: 21.961954, y: -0.10828698, z: 3.1636467}
-  - {x: 18.70336, y: -0.0007508341, z: -2.6148283}
-  - {x: 17.095741, y: 0.0012454372, z: -2.1940613}
-  - {x: 13.527403, y: 0.005676448, z: -1.2601091}
-  - {x: 10.58117, y: 1.1168118, z: 1.3620305}
-  - {x: 8.427124, y: 1.1233017, z: 3.7174606}
-  - {x: 6.369481, y: 1.1295013, z: 5.967475}
-  - {x: 5.030251, y: 0.029654266, z: 7.970317}
-  - {x: 4.7481728, y: 0.09119244, z: 8.184616}
-  - {x: 4.5983734, y: 0.123872615, z: 8.298421}
-  - {x: -4.2382846, y: 1.4112804, z: 8.934839}
-  - {x: -4.51173, y: 1.4536965, z: 8.9739685}
-  normals:
-  - {x: 0, y: 1, z: 0}
-  - {x: -0.0071152686, y: 0.99997467, z: -0.000028610257}
-  - {x: -0.007121404, y: 0.99997264, z: -0.002022578}
-  - {x: -0.005316547, y: 0.9999839, z: -0.0019866396}
-  - {x: -0.0033533906, y: 0.9999809, z: 0.005181511}
-  - {x: 0.0011167637, y: 0.9999021, z: 0.013944795}
-  - {x: 0.0055021057, y: 0.9998558, z: 0.01606831}
-  - {x: 0.04537329, y: 0.9982221, z: 0.03865094}
-  - {x: 0.16089696, y: 0.98545015, z: -0.05477341}
-  - {x: 0.1511198, y: 0.98839617, z: -0.015353991}
-  angles: []
-  bounds:
-    m_Center: {x: 16.750628, y: 0.67459035, z: 11.315462}
-    m_Extent: {x: 21.262358, y: 0.77910614, z: 13.509523}
-  boundingBoxes:
-  - m_Center: {x: 37.339584, y: 0.0031631044, z: 19.937061}
-    m_Extent: {x: 0.6734009, y: 0.0039780913, z: 4.887924}
-  - m_Center: {x: 37.458775, y: -0.0014253046, z: 12.968033}
-    m_Extent: {x: 0.45259476, y: 0.00089884724, z: 2.0811043}
-  - m_Center: {x: 36.570507, y: -0.016785607, z: 8.062864}
-    m_Extent: {x: 1.3408623, y: 0.014461456, z: 2.8240643}
-  - m_Center: {x: 31.470554, y: -0.035135277, z: 1.8869495}
-    m_Extent: {x: 3.7590904, y: 0.0038882159, z: 3.3518505}
-  - m_Center: {x: 25.63813, y: -0.07176964, z: 0.65358734}
-    m_Extent: {x: 2.0733337, y: 0.032746144, z: 2.1184883}
-  - m_Center: {x: 20.330269, y: -0.051635172, z: 0.2890072}
-    m_Extent: {x: 3.2345276, y: 0.05288061, z: 2.4830685}
-  - m_Center: {x: 12.761433, y: 0.56227356, z: 0.7616997}
-    m_Extent: {x: 4.3343086, y: 0.5610281, z: 2.955761}
-  - m_Center: {x: 6.5876484, y: 0.60724705, z: 5.9510384}
-    m_Extent: {x: 1.8394756, y: 0.51605463, z: 2.2335777}
-  - m_Center: {x: 0.11822128, y: 0.7724444, z: 8.579292}
-    m_Extent: {x: 4.6299515, y: 0.681252, z: 0.3946762}
 --- !u!1 &1124609529
 GameObject:
   m_ObjectHideFlags: 0
@@ -506323,7 +506043,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3615c725a70fd34db4dcad6e8edfbf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerControlShortcuts_Rigidbody
-  teleportPosition: {x: 13, y: 0, z: 47}
   fallYThreshold: -5
   angleThreshold: 45
   angularVelocityMin: 0.5
@@ -510309,7 +510028,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LookBackCamera
   carCamera: {fileID: 2074171119}
-  lookBackKey: 118
   autoMirrorPosition: 1
   rearViewLocalPosition: {x: 0, y: 0, z: 0}
   rearViewPitchOffset: 10
