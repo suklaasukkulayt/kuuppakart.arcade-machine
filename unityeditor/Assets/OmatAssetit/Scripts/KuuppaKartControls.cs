@@ -52,6 +52,7 @@ public sealed class KuuppaKartControls : MonoBehaviour
     private readonly List<GameObject> onScreenButtonRoots = new List<GameObject>();
     private InputActionRebindingExtensions.RebindingOperation activeRebinding;
     private bool onScreenButtonsVisible;
+    private Vector2 onScreenJoystick;
 
     private void Awake()
     {
@@ -212,8 +213,13 @@ public sealed class KuuppaKartControls : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    public float MoveVertical => Mathf.Clamp(Read(KuuppaKartAction.Accelerate) - Read(KuuppaKartAction.Brake) + (onScreenHeld.Contains(KuuppaKartAction.Accelerate) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.Brake) ? 1f : 0f), -1f, 1f);
-    public float MoveHorizontal => Mathf.Clamp(Read(KuuppaKartAction.TurnRight) - Read(KuuppaKartAction.TurnLeft) + (onScreenHeld.Contains(KuuppaKartAction.TurnRight) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.TurnLeft) ? 1f : 0f), -1f, 1f);
+    public float MoveVertical => Mathf.Clamp(Read(KuuppaKartAction.Accelerate) - Read(KuuppaKartAction.Brake) + (onScreenHeld.Contains(KuuppaKartAction.Accelerate) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.Brake) ? 1f : 0f) + onScreenJoystick.y, -1f, 1f);
+    public float MoveHorizontal => Mathf.Clamp(Read(KuuppaKartAction.TurnRight) - Read(KuuppaKartAction.TurnLeft) + (onScreenHeld.Contains(KuuppaKartAction.TurnRight) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.TurnLeft) ? 1f : 0f) + onScreenJoystick.x, -1f, 1f);
+    
+    public void SetOnScreenJoystick(Vector2 value)
+    {
+        onScreenJoystick = Vector2.ClampMagnitude(value, 1f);
+    }
     public void SetOnScreenButton(KuuppaKartAction action, bool pressed)
     {
         if (pressed)
