@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using UnityEngine.Serialization;
 
 [RequireComponent(typeof(Rigidbody))]
 public class Player : MonoBehaviour
@@ -73,7 +74,8 @@ public class Player : MonoBehaviour
     public float maxStepHeight = 0.5f;
     public float maxSlopeAngle = 55f;
     public float alignSharpness = 12f;
-    public float maxDepenetrationVelocity = 3f;
+    public float maxDepenetrationVelocity = 8f;
+    public float groundProbeSideOffset = 0.3f;
 
     [Header("Collision filtering")]
     public float lightObjectMassRatio = 0.25f;
@@ -81,8 +83,9 @@ public class Player : MonoBehaviour
     public float blockedTimeLimit = 0.15f;
 
     [Header("Slopes")]
-    public float slopeGravityFactor = 1f;
-    public float slopeHoldAcceleration = 2f;
+    [Range(0f, 0.5f)] public float slopeGravityFactor = 0.4f;
+    [FormerlySerializedAs("slopeHoldAcceleration")]
+    [Min(0f)] public float slopeRollResistance = 0.2f;
     public float maxRollBackSpeed = 8f;
     [Range(0f, 1f)] public float boostSlopeFactor = 0.1f;
 
@@ -99,6 +102,9 @@ public class Player : MonoBehaviour
     private float blockedTimer;
     private float ignoreBlockingUntil;
     private readonly RaycastHit[] groundHits = new RaycastHit[8];
+    private readonly RaycastHit[] groundSampleHits = new RaycastHit[5];
+
+    public bool IsGrounded { get; private set; }
 
     private void Start()
     {
@@ -113,7 +119,7 @@ public class Player : MonoBehaviour
 
         currentMaxSpeed = baseSpeed;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        rb.maxDepenetrationVelocity = maxDepenetrationVelocity;
+        rb.maxDepenetrationVelocity = Mathf.Max(8f, maxDepenetrationVelocity);
 
         if (FindFirstObjectByType<Speedometer>() != null)
         {
@@ -191,6 +197,7 @@ public class Player : MonoBehaviour
         bool foundFrontalContact = false;
         float obstacleHeightLimit = Mathf.Max(0f, lowObstacleHeight);
         float minimumContactHeight = groundCollider != null ? groundCollider.bounds.min.y + obstacleHeightLimit : rb.position.y + obstacleHeightLimit;
+        float walkableNormalY = Mathf.Min(groundNormalY, Mathf.Cos(Mathf.Clamp(maxSlopeAngle, 0f, 89f) * Mathf.Deg2Rad)) - 0.05f;
 
         for (int i = 0; i < collision.contactCount; i++)
         {
@@ -199,7 +206,7 @@ public class Player : MonoBehaviour
             Vector3 towardPlayer = rb.worldCenterOfMass - candidate.point;
             if (Vector3.Dot(candidateAway, towardPlayer) < 0f)
                 candidateAway = -candidateAway;
-            if (candidateAway.y > groundNormalY || candidate.point.y < minimumContactHeight)
+            if (candidateAway.y >= walkableNormalY || candidate.point.y < minimumContactHeight)
                 continue;
 
             Vector3 candidateAwayFlat = new Vector3(candidateAway.x, 0f, candidateAway.z);
@@ -286,6 +293,7 @@ public class Player : MonoBehaviour
             return;
 
         float lowerBodyTop = groundCollider.bounds.min.y + Mathf.Max(0f, lowObstacleHeight);
+        float walkableNormalY = Mathf.Min(groundNormalY, Mathf.Cos(Mathf.Clamp(maxSlopeAngle, 0f, 89f) * Mathf.Deg2Rad)) - 0.05f;
         bool lowSideContact = false;
         for (int i = 0; i < collision.contactCount; i++)
         {
@@ -295,7 +303,7 @@ public class Player : MonoBehaviour
             Vector3 normalTowardPlayer = contact.normal;
             if (Vector3.Dot(normalTowardPlayer, rb.worldCenterOfMass - contact.point) < 0f)
                 normalTowardPlayer = -normalTowardPlayer;
-            if (normalTowardPlayer.y > groundNormalY)
+            if (normalTowardPlayer.y >= walkableNormalY)
                 continue;
             lowSideContact = true;
             break;
@@ -306,7 +314,7 @@ public class Player : MonoBehaviour
         ignoreBlockingUntil = Mathf.Max(ignoreBlockingUntil, Time.time + Mathf.Max(0f, blockedTimeLimit));
         blockedTimer = 0f;
         Vector3 velocity = rb.linearVelocity;
-        if (velocity.y > 0f)
+        if (!IsGrounded && velocity.y > 0f)
         {
             velocity.y = 0f;
             rb.linearVelocity = velocity;
@@ -319,6 +327,7 @@ public class Player : MonoBehaviour
 
     private void FixedUpdate()
     {
+        IsGrounded = false;
         if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
             return;
 
@@ -352,71 +361,119 @@ public class Player : MonoBehaviour
 
         float input = controls != null ? controls.MoveVertical : 0f;
         float turn = (controls != null ? controls.MoveHorizontal : 0f) * turnSpeed * dt;
-        Vector3 flatForward = transform.forward;
-        flatForward.y = 0f;
+        Vector3 flatForward = new Vector3(transform.forward.x, 0f, transform.forward.z);
         flatForward = flatForward.sqrMagnitude > 0.0001f ? flatForward.normalized : Vector3.forward;
 
-        RaycastHit hitCenter;
-        bool grounded = ProbeGround(rb.position + Vector3.up * groundCheckHeight, groundCheckHeight + groundSnapDistance, out hitCenter)
-            && hitCenter.normal.y > Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad)
-            && IsGroundWithinSnapDistance(hitCenter);
+        RaycastHit groundHit;
+        bool grounded = ProbeGroundSurface(flatForward, out groundHit);
+        IsGrounded = grounded;
         UpdateBlockedSpeed(dt, grounded);
 
+        Vector3 surfaceForward = flatForward;
         float slopeAccel = 0f;
         if (grounded)
         {
-            Vector3 gn = hitCenter.normal;
-            float slopeForward = -(gn.x * flatForward.x + gn.z * flatForward.z) / Mathf.Max(gn.y, 0.01f);
-            float sinSlope = slopeForward / Mathf.Sqrt(1f + slopeForward * slopeForward);
-            slopeAccel = -Physics.gravity.magnitude * sinSlope * slopeGravityFactor;
+            surfaceForward = Vector3.ProjectOnPlane(flatForward, groundHit.normal);
+            if (surfaceForward.sqrMagnitude < 0.0001f)
+                surfaceForward = flatForward;
+            surfaceForward.Normalize();
+
+            float gravityFactor = Mathf.Clamp(slopeGravityFactor, 0f, 0.5f);
+            slopeAccel = Vector3.Dot(Physics.gravity, surfaceForward) * gravityFactor;
             if (isBoosted)
                 slopeAccel *= boostSlopeFactor;
         }
 
-        UpdateForwardSpeed(input, dt, slopeAccel);
-        float dirSign = forwardSpeed >= 0f ? 1f : -1f;
-        Vector3 moveFlat = flatForward * dirSign;
-        float speedAbs = Mathf.Abs(forwardSpeed);
-        Vector3 vel = rb.linearVelocity;
-        Vector3 desired;
+        UpdateForwardSpeed(input, dt, slopeAccel, grounded);
 
+        Vector3 desired = surfaceForward * forwardSpeed;
         if (grounded)
         {
-            float maxTan = Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad);
-            Vector3 n = hitCenter.normal;
-            float slopeNormal = -(n.x * moveFlat.x + n.z * moveFlat.z) / Mathf.Max(n.y, 0.01f);
-            float slope = slopeNormal;
-            RaycastHit hitAhead;
-            if (ProbeGround(rb.position + moveFlat * lookAhead + Vector3.up * groundCheckHeight, groundCheckHeight + 1f, out hitAhead))
-            {
-                float dy = hitAhead.point.y - hitCenter.point.y;
-                if (Mathf.Abs(dy) <= maxStepHeight)
-                    slope = dy / Mathf.Max(lookAhead, 0.01f);
-            }
-            slope = Mathf.Clamp(slope, -maxTan, maxTan);
-            Vector3 moveDir = (moveFlat + Vector3.up * slope).normalized;
-            desired = moveDir * speedAbs;
-            vel.x = desired.x;
-            vel.z = desired.z;
+            rb.linearVelocity = desired;
         }
         else
         {
-            desired = moveFlat * speedAbs;
-            vel.x = desired.x;
-            vel.z = desired.z;
+            Vector3 velocity = rb.linearVelocity;
+            velocity.x = desired.x;
+            velocity.z = desired.z;
+            rb.linearVelocity = velocity;
         }
 
-        rb.linearVelocity = vel;
         intendedVelocity = desired;
         commandedXZ = new Vector3(desired.x, 0f, desired.z);
+
         Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn, 0f);
         if (grounded)
         {
-            Quaternion aligned = Quaternion.FromToRotation(rot * Vector3.up, hitCenter.normal) * rot;
+            Quaternion aligned = Quaternion.FromToRotation(rot * Vector3.up, groundHit.normal) * rot;
             rot = Quaternion.Slerp(rot, aligned, 1f - Mathf.Exp(-alignSharpness * dt));
             rb.angularVelocity = Vector3.zero;
         }
         rb.MoveRotation(rot);
+    }
+
+    private bool ProbeGroundSurface(Vector3 flatForward, out RaycastHit bestHit)
+    {
+        bestHit = default;
+        int count = 0;
+        float forwardOffset = Mathf.Clamp(lookAhead * 0.45f, 0.25f, 0.9f);
+        Vector3 flatRight = new Vector3(transform.right.x, 0f, transform.right.z);
+        flatRight = flatRight.sqrMagnitude > 0.0001f ? flatRight.normalized : Vector3.right;
+        float rayDistance = groundCheckHeight + groundSnapDistance + Mathf.Max(0f, maxStepHeight) + 0.35f;
+
+        CollectGroundSample(Vector3.zero, rayDistance, ref count);
+        CollectGroundSample(flatForward * forwardOffset, rayDistance, ref count);
+        CollectGroundSample(-flatForward * forwardOffset, rayDistance, ref count);
+        CollectGroundSample(flatRight * groundProbeSideOffset, rayDistance, ref count);
+        CollectGroundSample(-flatRight * groundProbeSideOffset, rayDistance, ref count);
+
+        if (count == 0)
+            return false;
+
+        float nearestDistance = float.MaxValue;
+        for (int i = 0; i < count; i++)
+        {
+            if (groundSampleHits[i].distance < nearestDistance)
+            {
+                nearestDistance = groundSampleHits[i].distance;
+                bestHit = groundSampleHits[i];
+            }
+        }
+
+        Vector3 normalSum = Vector3.zero;
+        int normalCount = 0;
+        float normalRange = Mathf.Max(0.15f, Mathf.Max(0f, maxStepHeight) * 0.5f);
+        for (int i = 0; i < count; i++)
+        {
+            RaycastHit sample = groundSampleHits[i];
+            if (sample.distance > nearestDistance + normalRange)
+                continue;
+            if (Mathf.Abs(sample.point.y - bestHit.point.y) > Mathf.Max(0.2f, maxStepHeight))
+                continue;
+            normalSum += sample.normal;
+            normalCount++;
+        }
+
+        if (normalCount > 0 && normalSum.sqrMagnitude > 0.0001f)
+            bestHit.normal = normalSum.normalized;
+
+        return bestHit.normal.y >= Mathf.Cos(Mathf.Clamp(maxSlopeAngle, 0f, 89f) * Mathf.Deg2Rad) - 0.02f;
+    }
+
+    private void CollectGroundSample(Vector3 offset, float distance, ref int count)
+    {
+        if (count >= groundSampleHits.Length)
+            return;
+
+        Vector3 origin = rb.position + offset + Vector3.up * groundCheckHeight;
+        if (!ProbeGround(origin, distance, out RaycastHit hit))
+            return;
+        if (!IsGroundWithinSnapDistance(hit))
+            return;
+        if (hit.normal.y < Mathf.Cos(Mathf.Clamp(maxSlopeAngle, 0f, 89f) * Mathf.Deg2Rad) - 0.02f)
+            return;
+
+        groundSampleHits[count++] = hit;
     }
 
     private bool IsGroundWithinSnapDistance(RaycastHit hit)
@@ -463,7 +520,7 @@ public class Player : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             RaycastHit hit = groundHits[i];
-            if (hit.collider.attachedRigidbody != null)
+            if (hit.collider == null || hit.collider.attachedRigidbody != null)
                 continue;
             if (hit.distance < bestDistance)
             {
@@ -475,7 +532,7 @@ public class Player : MonoBehaviour
         return found;
     }
 
-    private void UpdateForwardSpeed(float input, float dt, float slopeAccel)
+    private void UpdateForwardSpeed(float input, float dt, float slopeAccel, bool grounded)
     {
         float maxReverse = baseSpeed * reverseSpeedFactor;
         float accel = isBoosted ? boostAcceleration : acceleration;
@@ -499,17 +556,12 @@ public class Player : MonoBehaviour
         }
         else
         {
-            forwardSpeed = Mathf.MoveTowards(forwardSpeed, 0f, coastDeceleration * dt);
+            float coast = grounded && Mathf.Abs(slopeAccel) > 0.05f ? Mathf.Max(0f, slopeRollResistance) : coastDeceleration;
+            forwardSpeed = Mathf.MoveTowards(forwardSpeed, 0f, coast * dt);
         }
 
-        if (slopeAccel != 0f)
-        {
-            bool idle = Mathf.Abs(input) <= 0.1f;
-            if (idle && Mathf.Abs(forwardSpeed) < 0.2f && Mathf.Abs(slopeAccel) < slopeHoldAcceleration)
-                forwardSpeed = 0f;
-            else
-                forwardSpeed += slopeAccel * dt;
-        }
+        if (grounded)
+            forwardSpeed += slopeAccel * dt;
 
         forwardSpeed = Mathf.Max(forwardSpeed, -maxRollBackSpeed);
         if (forwardSpeed > currentMaxSpeed)

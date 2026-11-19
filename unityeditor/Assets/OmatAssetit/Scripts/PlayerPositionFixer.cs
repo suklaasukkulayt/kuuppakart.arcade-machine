@@ -23,6 +23,7 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
 
     private Rigidbody rb;
     private Camera mainCamera;
+    private Player player;
     private bool isAutoCorrecting;
     private Quaternion autoTargetRotation = Quaternion.identity;
     private float tiltTimer;
@@ -48,6 +49,7 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        player = GetComponent<Player>();
         mainCamera = GetComponentInChildren<Camera>();
         if (mainCamera == null)
             mainCamera = Camera.main;
@@ -97,6 +99,12 @@ public class PlayerUprightAndShortcuts_AutoFallReset : MonoBehaviour
     private bool IsTiltedBeyondThreshold()
     {
         float angleFromUp = Vector3.Angle(transform.up, Vector3.up);
+        if (player != null && player.IsGrounded && angleFromUp < 85f)
+        {
+            tiltTimer = 0f;
+            return false;
+        }
+
         if (angleFromUp <= angleThreshold)
         {
             tiltTimer = 0f;
