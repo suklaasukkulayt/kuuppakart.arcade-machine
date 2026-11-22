@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 1109
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Scene
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -862,9 +862,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 27.76177, y: -13.09386, z: 45.875286}
+    m_Target: {x: 46.837322, y: -0.027019171, z: 44.473408}
     speed: 2
-    m_Value: {x: 27.76177, y: -13.09386, z: 45.875286}
+    m_Value: {x: 46.837322, y: -0.027019171, z: 44.473408}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -910,9 +910,9 @@ MonoBehaviour:
     m_GridAxis: 1
     m_gridOpacity: 0.5
   m_Rotation:
-    m_Target: {x: -0.27472356, y: -0.67066324, z: 0.29612395, w: -0.622144}
+    m_Target: {x: -0.025022194, y: -0.72443914, z: 0.026300808, w: -0.68839383}
     speed: 2
-    m_Value: {x: 0.27472356, y: 0.67066324, z: -0.29612395, w: 0.622144}
+    m_Value: {x: 0.025022194, y: 0.72443914, z: -0.026300808, w: 0.6883938}
   m_Size:
     m_Target: 12.61869
     speed: 2
@@ -1106,9 +1106,9 @@ MonoBehaviour:
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 199}
-    m_SelectedIDs: 70d90000
-    m_LastClickedID: 55664
+    scrollPos: {x: 0, y: 259}
+    m_SelectedIDs: 6ed90000
+    m_LastClickedID: 55662
     m_ExpandedIDs: 000000008ad800008cd800008ed8000090d8000092d8000094d8000096d8000098d800009ad800009cd800009ed80000a0d80000a2d80000a4d80000a6d80000a8d80000aad80000acd80000aed80000b0d80000b2d80000b4d80000b6d80000b8d80000bad80000bcd80000bed80000c0d80000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
@@ -1313,7 +1313,7 @@ MonoBehaviour:
     m_ControlHash: -371814159
     m_PrefName: Preview_InspectorPreview
   m_LastInspectedObjectInstanceID: -1
-  m_LastVerticalScrollValue: 648
+  m_LastVerticalScrollValue: 0
   m_GlobalObjectId: 
   m_InspectorMode: 0
   m_LockTracker:
