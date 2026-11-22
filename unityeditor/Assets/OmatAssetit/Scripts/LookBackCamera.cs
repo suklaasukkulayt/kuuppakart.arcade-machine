@@ -26,12 +26,15 @@ public class LookBackCamera : MonoBehaviour
     public float speedBobStartSpeed = 5f;
 
     private Vector3 forwardPosition;
-    private Quaternion forwardRotation;
     private Vector3 computedRearPosition;
-    private Quaternion computedRearRotation;
+    private Vector3 forwardOffsetInPlayer;
+    private Vector3 rearOffsetInPlayer;
+    private Quaternion forwardRotationInPlayer;
+    private Quaternion rearRotationInPlayer;
     private bool lookingBack;
     private Transform playerTransform;
     private Rigidbody playerBody;
+    private Player playerController;
     private Vector3 lastLocalVelocity;
     private Vector3 cameraPositionVelocity;
     private Vector3 currentMotionOffset;
@@ -45,6 +48,7 @@ public class LookBackCamera : MonoBehaviour
         {
             playerTransform = player.transform;
             playerBody = player.GetComponent<Rigidbody>();
+            playerController = player.GetComponent<Player>();
         }
 
         if (carCamera == null && player != null)
@@ -66,6 +70,8 @@ public class LookBackCamera : MonoBehaviour
             playerTransform = carCamera.parent != null ? carCamera.parent : transform;
         if (playerBody == null)
             playerBody = playerTransform.GetComponentInParent<Rigidbody>();
+        if (playerController == null)
+            playerController = playerTransform.GetComponentInParent<Player>();
 
         if (DifficultyManager.Instance != null)
         {
@@ -80,12 +86,23 @@ public class LookBackCamera : MonoBehaviour
         }
 
         forwardPosition = carCamera.localPosition;
-        forwardRotation = carCamera.localRotation;
         Vector3 basePos = autoMirrorPosition
             ? new Vector3(forwardPosition.x, forwardPosition.y, -forwardPosition.z)
             : rearViewLocalPosition;
         computedRearPosition = basePos;
-        computedRearRotation = forwardRotation * Quaternion.Euler(rearViewPitchOffset, 180f, 0f);
+
+        Transform cameraParent = carCamera.parent;
+        Vector3 forwardWorldPosition = cameraParent != null
+            ? cameraParent.TransformPoint(forwardPosition)
+            : forwardPosition;
+        Vector3 rearWorldPosition = cameraParent != null
+            ? cameraParent.TransformPoint(computedRearPosition)
+            : computedRearPosition;
+
+        forwardOffsetInPlayer = playerTransform.InverseTransformPoint(forwardWorldPosition);
+        rearOffsetInPlayer = playerTransform.InverseTransformPoint(rearWorldPosition);
+        forwardRotationInPlayer = Quaternion.Inverse(playerTransform.rotation) * carCamera.rotation;
+        rearRotationInPlayer = forwardRotationInPlayer * Quaternion.Euler(rearViewPitchOffset, 180f, 0f);
 
         if (playerBody != null)
             lastLocalVelocity = playerTransform.InverseTransformDirection(playerBody.linearVelocity);
@@ -100,22 +117,20 @@ public class LookBackCamera : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (carCamera == null)
+        if (carCamera == null || playerTransform == null)
             return;
 
         float dt = Mathf.Max(Time.deltaTime, 0.0001f);
-        Vector3 targetPosition = lookingBack ? computedRearPosition : forwardPosition;
-        Quaternion targetRotation = lookingBack ? computedRearRotation : forwardRotation;
         Vector3 localAcceleration = Vector3.zero;
 
-        if (playerBody != null && playerTransform != null)
+        if (playerBody != null)
         {
             Vector3 localVelocity = playerTransform.InverseTransformDirection(playerBody.linearVelocity);
             localAcceleration = (localVelocity - lastLocalVelocity) / dt;
             lastLocalVelocity = localVelocity;
         }
 
-        if (!lookingBack && enableDrivingCameraMotion && playerBody != null && playerTransform != null)
+        if (!lookingBack && enableDrivingCameraMotion && playerBody != null)
         {
             float lateralOffset = Mathf.Clamp(-localAcceleration.x * lateralAccelerationInfluence, -maximumPositionOffset, maximumPositionOffset);
             float longitudinalOffset = Mathf.Clamp(-localAcceleration.z * longitudinalAccelerationInfluence, -maximumPositionOffset, maximumPositionOffset);
@@ -132,11 +147,24 @@ public class LookBackCamera : MonoBehaviour
             currentMotionRotation = Quaternion.identity;
         }
 
-        targetPosition += currentMotionOffset;
-        targetRotation *= currentMotionRotation;
+        Quaternion cameraHeading = playerTransform.rotation;
+        if (!lookingBack && playerController != null && playerController.IsDrifting && playerBody != null)
+        {
+            Vector3 movementDirection = Vector3.ProjectOnPlane(playerBody.linearVelocity, playerTransform.up);
+            if (movementDirection.sqrMagnitude > 0.25f)
+                cameraHeading = Quaternion.LookRotation(movementDirection.normalized, playerTransform.up);
+        }
+
+        Vector3 playerLocalOffset = lookingBack ? rearOffsetInPlayer : forwardOffsetInPlayer;
+        Quaternion playerRelativeRotation = lookingBack ? rearRotationInPlayer : forwardRotationInPlayer;
+        Quaternion headingDelta = cameraHeading * Quaternion.Inverse(playerTransform.rotation);
+        Vector3 worldOffset = headingDelta * playerTransform.TransformVector(playerLocalOffset);
+        Vector3 targetWorldPosition = playerTransform.position + worldOffset + cameraHeading * currentMotionOffset;
+        Quaternion targetWorldRotation = cameraHeading * playerRelativeRotation * currentMotionRotation;
+
         float smoothTime = 1f / Mathf.Max(1f, viewTransitionSpeed);
-        carCamera.localPosition = Vector3.SmoothDamp(carCamera.localPosition, targetPosition, ref cameraPositionVelocity, smoothTime, Mathf.Infinity, dt);
+        carCamera.position = Vector3.SmoothDamp(carCamera.position, targetWorldPosition, ref cameraPositionVelocity, smoothTime, Mathf.Infinity, dt);
         float rotationBlend = 1f - Mathf.Exp(-Mathf.Max(1f, viewTransitionSpeed) * dt);
-        carCamera.localRotation = Quaternion.Slerp(carCamera.localRotation, targetRotation, rotationBlend);
+        carCamera.rotation = Quaternion.Slerp(carCamera.rotation, targetWorldRotation, rotationBlend);
     }
 }

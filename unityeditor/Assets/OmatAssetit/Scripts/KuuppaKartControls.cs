@@ -28,7 +28,8 @@ public enum KuuppaKartAction
     MenuLeft,
     MenuRight,
     MenuConfirm,
-    MenuBack
+    MenuBack,
+    Drift
 }
 
 [DefaultExecutionOrder(-1000)]
@@ -215,11 +216,12 @@ public sealed class KuuppaKartControls : MonoBehaviour
 
     public float MoveVertical => Mathf.Clamp(Read(KuuppaKartAction.Accelerate) - Read(KuuppaKartAction.Brake) + (onScreenHeld.Contains(KuuppaKartAction.Accelerate) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.Brake) ? 1f : 0f) + onScreenJoystick.y, -1f, 1f);
     public float MoveHorizontal => Mathf.Clamp(Read(KuuppaKartAction.TurnRight) - Read(KuuppaKartAction.TurnLeft) + (onScreenHeld.Contains(KuuppaKartAction.TurnRight) ? 1f : 0f) - (onScreenHeld.Contains(KuuppaKartAction.TurnLeft) ? 1f : 0f) + onScreenJoystick.x, -1f, 1f);
-    
+
     public void SetOnScreenJoystick(Vector2 value)
     {
         onScreenJoystick = Vector2.ClampMagnitude(value, 1f);
     }
+
     public void SetOnScreenButton(KuuppaKartAction action, bool pressed)
     {
         if (pressed)
@@ -231,7 +233,7 @@ public sealed class KuuppaKartControls : MonoBehaviour
         {
             onScreenHeld.Remove(action);
         }
-}
+    }
 
     public bool WasPressed(KuuppaKartAction action)
     {
@@ -270,6 +272,7 @@ public sealed class KuuppaKartControls : MonoBehaviour
     public bool StartPressed => WasPressed(KuuppaKartAction.Start);
     public bool BoostPressed => WasPressed(KuuppaKartAction.Boost);
     public bool LookBackHeld => IsPressed(KuuppaKartAction.LookBack);
+    public bool DriftHeld => IsPressed(KuuppaKartAction.Drift);
 
     public string GetBindingDisplayName(KuuppaKartAction action, bool controller)
     {
@@ -402,6 +405,7 @@ public sealed class KuuppaKartControls : MonoBehaviour
             case KuuppaKartAction.TurnLeft: return new[] { "<Keyboard>/a", "<Keyboard>/leftArrow" };
             case KuuppaKartAction.TurnRight: return new[] { "<Keyboard>/d", "<Keyboard>/rightArrow" };
             case KuuppaKartAction.Boost: return new[] { "<Keyboard>/b" };
+            case KuuppaKartAction.Drift: return new[] { "<Keyboard>/leftShift" };
             case KuuppaKartAction.LookBack: return new[] { "<Keyboard>/v" };
             case KuuppaKartAction.Pause: return new[] { "<Keyboard>/escape" };
             case KuuppaKartAction.Reset: return new[] { profile == KuuppaKartControlProfile.Arcade ? "<Keyboard>/enter" : "<Keyboard>/r" };
@@ -425,6 +429,7 @@ public sealed class KuuppaKartControls : MonoBehaviour
             case KuuppaKartAction.TurnLeft: return new[] { "<Gamepad>/leftStick/left", "<Gamepad>/dpad/left" };
             case KuuppaKartAction.TurnRight: return new[] { "<Gamepad>/leftStick/right", "<Gamepad>/dpad/right" };
             case KuuppaKartAction.Boost: return new[] { "<Gamepad>/rightShoulder" };
+            case KuuppaKartAction.Drift: return new[] { "<Gamepad>/leftShoulder" };
             case KuuppaKartAction.LookBack: return new[] { "<Gamepad>/buttonNorth" };
             case KuuppaKartAction.Pause: return new[] { "<Gamepad>/start" };
             case KuuppaKartAction.Reset: return new[] { "<Gamepad>/select" };

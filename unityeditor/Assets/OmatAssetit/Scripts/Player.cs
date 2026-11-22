@@ -9,6 +9,16 @@ public class Player : MonoBehaviour
     public float baseSpeed = 10f;
     public float turnSpeed = 130f;
 
+    [Header("Drifting")]
+    [Min(0f)] public float driftMinSpeed = 4f;
+    [Range(0f, 1f)] public float driftTurnThreshold = 0.12f;
+    [Min(1f)] public float driftYawMultiplier = 1.25f;
+    [Min(0f)] public float driftLateralAcceleration = 16f;
+    [Min(0f)] public float driftLateralSpeed = 4.5f;
+    [Min(0f)] public float driftRecoveryGrip = 9f;
+    [Range(0f, 35f)] public float driftBodyAngle = 16f;
+    [Min(0f)] public float driftBodyYawSpeed = 120f;
+
     [Header("Acceleration")]
     public float acceleration = 7f;
     [Range(0.05f, 1f)] public float topSpeedAccelerationFactor = 0.35f;
@@ -63,6 +73,8 @@ public class Player : MonoBehaviour
     private KuuppaKartControls controls;
     private Vector3 intendedVelocity;
     private Vector3 commandedXZ;
+    private Vector3 driftVelocity;
+    private float driftYawOffset;
     [Range(0.2f, 0.95f)] public float blockedRatio = 0.7f;
     private float crashCooldownTimer;
 
@@ -134,6 +146,7 @@ public class Player : MonoBehaviour
     private float EffectiveMaxSlopeAngle => Mathf.Clamp(Mathf.Max(maxSlopeAngle, 68f), 0f, 89f);
 
     public bool IsGrounded { get; private set; }
+    public bool IsDrifting { get; private set; }
 
     private void Start()
     {
@@ -308,6 +321,9 @@ public class Player : MonoBehaviour
         crashCooldownTimer = stunTimer + crashCooldown;
         forwardSpeed = 0f;
         commandedXZ = Vector3.zero;
+        driftVelocity = Vector3.zero;
+        driftYawOffset = 0f;
+        IsDrifting = false;
         blockedTimer = 0f;
         groundGraceTimer = 0f;
 
@@ -620,6 +636,8 @@ public class Player : MonoBehaviour
         {
             groundContactCount = 0;
             groundContactNormalSum = Vector3.zero;
+            driftVelocity = Vector3.zero;
+            IsDrifting = false;
             return;
         }
 
@@ -652,12 +670,16 @@ public class Player : MonoBehaviour
             forwardSpeed = 0f;
             intendedVelocity = Vector3.zero;
             commandedXZ = Vector3.zero;
+            driftVelocity = Vector3.zero;
+            driftYawOffset = 0f;
+            IsDrifting = false;
             blockedTimer = 0f;
             return;
         }
 
         float input = controls != null ? controls.MoveVertical : 0f;
-        float turn = (controls != null ? controls.MoveHorizontal : 0f) * turnSpeed * dt;
+        float steeringInput = controls != null ? controls.MoveHorizontal : 0f;
+        float turn = steeringInput * turnSpeed * dt;
         Vector3 flatForward = new Vector3(transform.forward.x, 0f, transform.forward.z);
         flatForward = flatForward.sqrMagnitude > 0.0001f ? flatForward.normalized : Vector3.forward;
 
@@ -690,6 +712,8 @@ public class Player : MonoBehaviour
         if (blockedByWall)
         {
             forwardSpeed = 0f;
+            driftVelocity = Vector3.zero;
+            IsDrifting = false;
             blockedTimer = 0f;
             Vector3 velocity = rb.linearVelocity;
             Vector3 horizontalVelocity = new Vector3(velocity.x, 0f, velocity.z);
@@ -725,7 +749,47 @@ public class Player : MonoBehaviour
         else
             UpdateForwardSpeed(input, dt, slopeAccel, grounded);
 
-        Vector3 desired = surfaceForward * forwardSpeed;
+        IsDrifting = !blockedByWall
+            && controls != null
+            && controls.DriftHeld
+            && grounded
+            && forwardSpeed >= driftMinSpeed
+            && Mathf.Abs(steeringInput) >= driftTurnThreshold;
+
+        Vector3 surfaceRight = Vector3.Cross(driveNormal, surfaceForward);
+        if (surfaceRight.sqrMagnitude < 0.0001f)
+            surfaceRight = Vector3.Cross(Vector3.up, flatForward);
+        surfaceRight.Normalize();
+
+        if (IsDrifting)
+        {
+            float speedFactor = Mathf.InverseLerp(
+                driftMinSpeed,
+                Mathf.Max(driftMinSpeed + 0.01f, currentMaxSpeed),
+                forwardSpeed
+            );
+            Vector3 targetDriftVelocity = -surfaceRight
+                * (Mathf.Sign(steeringInput) * driftLateralSpeed * speedFactor);
+            driftVelocity = Vector3.MoveTowards(
+                driftVelocity,
+                targetDriftVelocity,
+                driftLateralAcceleration * dt
+            );
+        }
+        else
+        {
+            float recoveryGrip = grounded ? driftRecoveryGrip : driftRecoveryGrip * 0.25f;
+            driftVelocity = Vector3.MoveTowards(
+                driftVelocity,
+                Vector3.zero,
+                recoveryGrip * dt
+            );
+        }
+
+        if (grounded)
+            driftVelocity = Vector3.ProjectOnPlane(driftVelocity, driveNormal);
+
+        Vector3 desired = surfaceForward * forwardSpeed + driftVelocity;
         if (grounded)
         {
             float intoGround = Mathf.Min(0f, Vector3.Dot(rb.linearVelocity, driveNormal));
@@ -744,7 +808,17 @@ public class Player : MonoBehaviour
         intendedVelocity = desired;
         commandedXZ = new Vector3(desired.x, 0f, desired.z);
 
-        Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn, 0f);
+        float targetDriftYawOffset = IsDrifting ? steeringInput * driftBodyAngle : 0f;
+        float previousDriftYawOffset = driftYawOffset;
+        driftYawOffset = Mathf.MoveTowards(
+            driftYawOffset,
+            targetDriftYawOffset,
+            driftBodyYawSpeed * dt
+        );
+
+        float turnMultiplier = IsDrifting ? driftYawMultiplier : 1f;
+        float driftYawDelta = driftYawOffset - previousDriftYawOffset;
+        Quaternion rot = rb.rotation * Quaternion.Euler(0f, turn * turnMultiplier + driftYawDelta, 0f);
         if (grounded)
         {
             Quaternion aligned = Quaternion.FromToRotation(rot * Vector3.up, groundNormal) * rot;

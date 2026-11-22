@@ -29,6 +29,7 @@ public class Speedometer : MonoBehaviour
     public Color boostActiveColor = new Color(1f, 0.55f, 0.1f, 1f);
     public Color boostReadyColor = new Color(0.3f, 1f, 0.5f, 1f);
     public Color boostChargingColor = new Color(0.55f, 0.6f, 0.7f, 1f);
+    public Color driftColor = new Color(1f, 0.68f, 0.16f, 1f);
     public Color needleColor = new Color(1f, 0.25f, 0.2f, 1f);
 
     [Header("Optional custom assets")]
@@ -47,6 +48,7 @@ public class Speedometer : MonoBehaviour
     TextMeshProUGUI speedText;
     TextMeshProUGUI unitLabel;
     TextMeshProUGUI statusText;
+    TextMeshProUGUI driftText;
     float shownSpeed01;
     float radius;
 
@@ -114,6 +116,12 @@ public class Speedometer : MonoBehaviour
         statusText = NewText("BoostStatus", root, 30, FontStyles.Bold, TextAlignmentOptions.Center);
         statusText.rectTransform.anchoredPosition = new Vector2(0f, -radius * 0.32f - 100f + statusTextRaise);
         statusText.rectTransform.sizeDelta = new Vector2(size * 0.7f, 44f);
+
+        driftText = NewText("DriftStatus", root, 22, FontStyles.Bold, TextAlignmentOptions.Center);
+        driftText.rectTransform.anchoredPosition = new Vector2(0f, radius * 0.43f);
+        driftText.rectTransform.sizeDelta = new Vector2(size * 0.65f, 34f);
+        driftText.color = driftColor;
+        driftText.text = string.Empty;
     }
 
     void Update()
@@ -130,6 +138,7 @@ public class Speedometer : MonoBehaviour
 
         bool reverse = player.ForwardSpeed < -0.2f;
         bool boosted = player.IsBoosted;
+        bool drifting = player.IsDrifting;
 
         speedArc.fillAmount = shownSpeed01 * (SweepAngle / 360f);
         Color arcColor = Color.Lerp(speedColor, speedFastColor, Mathf.InverseLerp(0.5f, 1f, shownSpeed01));
@@ -166,6 +175,9 @@ public class Speedometer : MonoBehaviour
             statusText.text = player.BoostCooldownLeft.ToString("F1") + "s";
             statusText.color = boostChargingColor;
         }
+
+        driftText.text = drifting ? "DRIFTING" : string.Empty;
+        driftText.color = driftColor;
     }
 
     void BuildTicks()
