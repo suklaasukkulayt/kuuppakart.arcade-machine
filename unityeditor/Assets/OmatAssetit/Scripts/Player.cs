@@ -275,6 +275,8 @@ public class Player : MonoBehaviour
 
         if (!foundFrontalContact)
             return;
+        if (!hitCar && collision.rigidbody == null && !ConfirmWallAhead(away))
+            return;
 
         Vector3 otherVel = Vector3.zero;
         if (hitCar)
@@ -526,6 +528,39 @@ public class Player : MonoBehaviour
         angular.z = 0f;
         rb.angularVelocity = angular;
         return foundStepEdge;
+    }
+
+    private bool ConfirmWallAhead(Vector3 away)
+    {
+        if (groundCollider == null)
+            return true;
+
+        Bounds bounds = groundCollider.bounds;
+        Vector3 center = rb.worldCenterOfMass;
+        Vector3 toward = -away;
+        Vector3 side = Vector3.Cross(Vector3.up, away);
+        float reach = Mathf.Abs(away.x) * bounds.extents.x + Mathf.Abs(away.z) * bounds.extents.z + 0.6f;
+        float walkableNormalY = Mathf.Min(groundNormalY, Mathf.Cos(EffectiveMaxSlopeAngle * Mathf.Deg2Rad)) - 0.05f;
+        float highY = bounds.min.y + Mathf.Max(lowObstacleHeight, 0.2f) + 0.2f;
+
+        for (int h = 0; h < 2; h++)
+        {
+            float y = h == 0 ? highY : center.y;
+            for (int i = -1; i <= 1; i++)
+            {
+                Vector3 origin = new Vector3(center.x, y, center.z) + side * (i * 0.4f) + away * 0.5f;
+                if (!CastSolid(origin, toward, reach + 0.5f, out RaycastHit hit))
+                    continue;
+                if (hit.normal.y >= walkableNormalY)
+                    continue;
+                Vector3 flatNormal = new Vector3(hit.normal.x, 0f, hit.normal.z);
+                if (flatNormal.sqrMagnitude < 0.01f)
+                    continue;
+                if (Vector3.Dot(flatNormal.normalized, away) > 0.3f)
+                    return true;
+            }
+        }
+        return false;
     }
 
     private bool TryGetStepSurface(Vector3 direction, out RaycastHit hit, out float stepRise)
