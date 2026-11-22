@@ -5466,7 +5466,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 215670166}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 40
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -33191,7 +33191,7 @@ MonoBehaviour:
   baseSpeed: 12
   turnSpeed: 130
   acceleration: 7
-  topSpeedAccelerationFactor: 0.35
+  topSpeedAccelerationFactor: 0.367
   coastDeceleration: 3.5
   brakeDeceleration: 18
   reverseSpeedFactor: 0.4
@@ -33221,14 +33221,16 @@ MonoBehaviour:
   groundSnapDistance: 0.4
   lookAhead: 1.4
   maxStepHeight: 0.5
-  maxSlopeAngle: 60
+  maxSlopeAngle: 68
   alignSharpness: 12
-  maxDepenetrationVelocity: 3
+  maxDepenetrationVelocity: 1.5
+  groundProbeSideOffset: 0.3
+  stepClimbSpeed: 1.2
   lightObjectMassRatio: 0.25
   lowObstacleHeight: 0.5
   blockedTimeLimit: 0.2
-  slopeGravityFactor: 2
-  slopeHoldAcceleration: 0.2
+  slopeGravityFactor: 0.5
+  slopeRollResistance: 0.2
   maxRollBackSpeed: 12
   boostSlopeFactor: 0
   frontalCrashDot: 0.8
