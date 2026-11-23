@@ -150,6 +150,19 @@ public class DifficultySelector : MonoBehaviour
         string scene = gameSceneName;
         if (levels != null && levels.Length > 0 && levelIndex >= 0 && levelIndex < levels.Length && !string.IsNullOrEmpty(levels[levelIndex].sceneName))
             scene = levels[levelIndex].sceneName;
+        
+        if (scene == "KKartOG")
+        {
+                if (!Application.CanStreamedLevelBeLoaded("CarSelect"))
+                {
+                    Debug.LogError("DifficultySelector: CarSelect is not included in Build Settings.");
+                    return;
+                }
+            PlayerPrefs.SetString(CarSelectionKeys.PendingGameplaySceneKey, scene);
+            PlayerPrefs.Save();
+            SceneManager.LoadScene("CarSelect");
+            return;
+        }
 
         if (!Application.CanStreamedLevelBeLoaded(scene))
         {

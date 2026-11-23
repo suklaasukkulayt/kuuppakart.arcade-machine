@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ca2103f79c001d4ba18b4ac4855ff56, type: 3}
+  m_Name: SportsCar
+  m_EditorClassIdentifier: Assembly-CSharp::CarDefinition
+  id: sport
+  displayName: Sports car
+  description: Fast speed and turns. Very light
+  visualPrefab: {fileID: 2922220883736789182, guid: 041e4e3100f07184cacfe35dce34f022,
+    type: 3}
+  visualLocalPosition: {x: 0, y: 0, z: 0}
+  visualLocalEulerAngles: {x: 0, y: 0, z: 0}
+  visualLocalScale: {x: 1, y: 1, z: 1}
+  applyStatsToPlayer: 1
+  topSpeed: 14
+  acceleration: 8
+  boostMaxSpeed: 17
+  boostAcceleration: 14
+  boostDuration: 1.3
+  boostCooldown: 7.5
+  turnSpeed: 200
+  brakePower: 15
+  driftMinSpeed: 4
+  driftTurnThreshold: 0.05
+  driftYawMultiplier: 1.6
+  driftLateralAcceleration: 25
+  driftLateralSpeed: 6.5
+  driftRecoveryGrip: 9
+  driftBodyAngle: 17.7
+  driftBodyYawSpeed: 120
+  rigidbodyMass: 100

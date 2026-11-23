@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d8bd9ed36a47b246b2af436a843de12, type: 3}
+  m_Name: CarDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::CarDatabase
+  cars:
+  - {fileID: 11400000, guid: f605a76f4e4cadd47985d74f7b79cf0f, type: 2}
+  - {fileID: 11400000, guid: 94416c4b25688dc4b985099140304d5c, type: 2}
+  - {fileID: 11400000, guid: 7b0ce7bf69728f3448dd9de3567d52a9, type: 2}
