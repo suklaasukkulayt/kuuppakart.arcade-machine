@@ -150,7 +150,7 @@ public class Speedometer : MonoBehaviour
 
         int shown = Mathf.RoundToInt(shownSpeed01 * maxDisplaySpeed);
         speedText.text = reverse ? "R " + shown : shown.ToString();
-        speedText.color = boosted ? boostActiveColor : Color.white;
+        speedText.color = boosted || player.IsDriftBoosted ? boostActiveColor : Color.white;
 
         if (boosted)
         {
@@ -158,6 +158,13 @@ public class Speedometer : MonoBehaviour
             boostArc.color = boostActiveColor;
             statusText.text = "BOOSTED!";
             statusText.color = boostActiveColor;
+        }
+        else if (player.IsDriftBoosted)
+        {
+            boostArc.fillAmount = player.DriftBoostRemaining01 * (SweepAngle / 360f);
+            boostArc.color = driftColor;
+            statusText.text = "DRIFT BOOST!";
+            statusText.color = driftColor;
         }
         else if (player.BoostReady)
         {

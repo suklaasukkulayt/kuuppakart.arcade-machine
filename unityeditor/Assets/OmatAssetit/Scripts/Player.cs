@@ -19,6 +19,14 @@ public class Player : MonoBehaviour
     [Range(0f, 35f)] public float driftBodyAngle = 16f;
     [Min(0f)] public float driftBodyYawSpeed = 120f;
 
+    [Header("Drift exit boost")]
+    [Min(0f)] public float driftBoostMinDuration = 0.45f;
+    [Min(0f)] public float driftBoostInstantSpeed = 2.5f;
+    [Min(0f)] public float driftBoostSpeedBonus = 3f;
+    [Min(0f)] public float driftBoostAcceleration = 18f;
+    [Min(0f)] public float driftBoostDuration = 1.25f;
+    [Min(0f)] public float driftBoostCooldown = 0.65f;
+
     [Header("Acceleration")]
     public float acceleration = 7f;
     [Range(0.05f, 1f)] public float topSpeedAccelerationFactor = 0.35f;
@@ -58,6 +66,8 @@ public class Player : MonoBehaviour
     public float BoostRemaining01 => isBoosted ? Mathf.Clamp01(boostTimer / boostDuration) : 0f;
     public float BoostCooldownProgress01 => BoostReady ? 1f : (isBoosted ? 0f : 1f - Mathf.Clamp01(cooldownTimer / boostCooldown));
     public float BoostCooldownLeft => Mathf.Max(0f, cooldownTimer);
+    public bool IsDriftBoosted => driftBoostTimer > 0f;
+    public float DriftBoostRemaining01 => EffectiveDriftBoostDuration > 0f ? Mathf.Clamp01(driftBoostTimer / EffectiveDriftBoostDuration) : 0f;
 
     private float currentMaxSpeed;
     private float boostTimer;
@@ -75,6 +85,10 @@ public class Player : MonoBehaviour
     private Vector3 commandedXZ;
     private Vector3 driftVelocity;
     private float driftYawOffset;
+    private float driftRunTimer;
+    private float driftBoostTimer;
+    private float driftBoostCooldownTimer;
+    private bool wasDrifting;
     [Range(0.2f, 0.95f)] public float blockedRatio = 0.7f;
     private float crashCooldownTimer;
 
@@ -144,6 +158,13 @@ public class Player : MonoBehaviour
     private readonly RaycastHit[] stepHits = new RaycastHit[8];
 
     private float EffectiveMaxSlopeAngle => Mathf.Clamp(Mathf.Max(maxSlopeAngle, 68f), 0f, 89f);
+    private float EffectiveDriftBoostMinDuration => Mathf.Min(driftBoostMinDuration, 0.45f);
+    private float EffectiveDriftBoostInstantSpeed => Mathf.Max(driftBoostInstantSpeed, 2.5f);
+    private float EffectiveDriftBoostBonus => Mathf.Max(driftBoostSpeedBonus, 3f);
+    private float EffectiveDriftBoostAcceleration => Mathf.Max(driftBoostAcceleration, 18f);
+    private float EffectiveDriftBoostDuration => Mathf.Max(driftBoostDuration, 1.25f);
+    private float DriftBoostStrength => EffectiveDriftBoostDuration > 0f ? Mathf.Clamp01(driftBoostTimer / EffectiveDriftBoostDuration) : 0f;
+    private float EffectiveMaxSpeed => currentMaxSpeed + EffectiveDriftBoostBonus * DriftBoostStrength;
 
     public bool IsGrounded { get; private set; }
     public bool IsDrifting { get; private set; }
@@ -324,6 +345,7 @@ public class Player : MonoBehaviour
         driftVelocity = Vector3.zero;
         driftYawOffset = 0f;
         IsDrifting = false;
+        ResetDriftTracking(true);
         blockedTimer = 0f;
         groundGraceTimer = 0f;
 
@@ -638,6 +660,7 @@ public class Player : MonoBehaviour
             groundContactNormalSum = Vector3.zero;
             driftVelocity = Vector3.zero;
             IsDrifting = false;
+            ResetDriftTracking(true);
             return;
         }
 
@@ -649,11 +672,14 @@ public class Player : MonoBehaviour
         if (controls == null)
             controls = KuuppaKartControls.EnsureInstance();
         float dt = Time.fixedDeltaTime;
+        driftBoostTimer = Mathf.Max(0f, driftBoostTimer - dt);
+        driftBoostCooldownTimer = Mathf.Max(0f, driftBoostCooldownTimer - dt);
         if (crashCooldownTimer > 0f)
             crashCooldownTimer -= dt;
 
         if (isStunned)
         {
+            ResetDriftTracking(true);
             stunTimer -= dt;
             if (stunTimer <= 0f)
             {
@@ -673,6 +699,7 @@ public class Player : MonoBehaviour
             driftVelocity = Vector3.zero;
             driftYawOffset = 0f;
             IsDrifting = false;
+            ResetDriftTracking(true);
             blockedTimer = 0f;
             return;
         }
@@ -756,6 +783,36 @@ public class Player : MonoBehaviour
             && forwardSpeed >= driftMinSpeed
             && Mathf.Abs(steeringInput) >= driftTurnThreshold;
 
+        if (IsDrifting)
+        {
+            driftRunTimer += dt;
+            wasDrifting = true;
+        }
+        else if (wasDrifting)
+        {
+            if (!blockedByWall
+                && driftRunTimer >= EffectiveDriftBoostMinDuration
+                && driftBoostCooldownTimer <= 0f)
+            {
+                driftBoostTimer = EffectiveDriftBoostDuration;
+                driftBoostCooldownTimer = driftBoostCooldown;
+                forwardSpeed = Mathf.Min(
+                    forwardSpeed + EffectiveDriftBoostInstantSpeed,
+                    currentMaxSpeed + EffectiveDriftBoostBonus
+                );
+            }
+
+            driftRunTimer = 0f;
+            wasDrifting = false;
+        }
+
+        if (driftBoostTimer > 0f && !isBoosted && !blockedByWall && input >= -0.1f && forwardSpeed > 0f)
+        {
+            float driftBoostTarget = currentMaxSpeed + EffectiveDriftBoostBonus * DriftBoostStrength;
+            if (forwardSpeed < driftBoostTarget)
+                forwardSpeed = Mathf.MoveTowards(forwardSpeed, driftBoostTarget, EffectiveDriftBoostAcceleration * dt);
+        }
+
         Vector3 surfaceRight = Vector3.Cross(driveNormal, surfaceForward);
         if (surfaceRight.sqrMagnitude < 0.0001f)
             surfaceRight = Vector3.Cross(Vector3.up, flatForward);
@@ -765,7 +822,7 @@ public class Player : MonoBehaviour
         {
             float speedFactor = Mathf.InverseLerp(
                 driftMinSpeed,
-                Mathf.Max(driftMinSpeed + 0.01f, currentMaxSpeed),
+                Mathf.Max(driftMinSpeed + 0.01f, EffectiveMaxSpeed),
                 forwardSpeed
             );
             Vector3 targetDriftVelocity = -surfaceRight
@@ -1108,14 +1165,23 @@ public class Player : MonoBehaviour
         return found;
     }
 
+    private void ResetDriftTracking(bool cancelBoost)
+    {
+        driftRunTimer = 0f;
+        wasDrifting = false;
+        if (cancelBoost)
+            driftBoostTimer = 0f;
+    }
+
     private float ThrottleAcceleration(float speed, float baseAccel, float slopeAccel, bool grounded)
     {
-        float t = Mathf.Clamp01(speed / Mathf.Max(0.01f, currentMaxSpeed));
+        float maxSpeed = EffectiveMaxSpeed;
+        float t = Mathf.Clamp01(speed / Mathf.Max(0.01f, maxSpeed));
         float a = baseAccel * Mathf.Lerp(1f, topSpeedAccelerationFactor, t * t);
 
         if (grounded && slopeAccel < 0f)
         {
-            float lowSpeed = Mathf.Clamp01(1f - speed / Mathf.Max(0.01f, currentMaxSpeed * climbAssistSpeedFraction));
+            float lowSpeed = Mathf.Clamp01(1f - speed / Mathf.Max(0.01f, maxSpeed * climbAssistSpeedFraction));
             float needed = -slopeAccel + climbAssistReserve;
             a = Mathf.Lerp(a, Mathf.Max(a, needed), lowSpeed);
         }
@@ -1124,9 +1190,10 @@ public class Player : MonoBehaviour
 
     private void UpdateForwardSpeed(float input, float dt, float slopeAccel, bool grounded)
     {
-        float maxReverse = currentMaxSpeed * reverseSpeedFactor;
-        float accel = isBoosted ? boostAcceleration : acceleration;
-        float reverseAccel = isBoosted ? boostAcceleration : reverseAcceleration;
+        float maxSpeed = EffectiveMaxSpeed;
+        float maxReverse = maxSpeed * reverseSpeedFactor;
+        float accel = isBoosted ? boostAcceleration : driftBoostTimer > 0f ? EffectiveDriftBoostAcceleration : acceleration;
+        float reverseAccel = isBoosted ? boostAcceleration : driftBoostTimer > 0f ? EffectiveDriftBoostAcceleration : reverseAcceleration;
         float brake = Mathf.Max(0.01f, brakeDeceleration);
         float v = forwardSpeed;
 
@@ -1143,9 +1210,9 @@ public class Player : MonoBehaviour
                     v = ThrottleAcceleration(0f, accel, slopeAccel, grounded) * leftover;
                 }
             }
-            else if (v < currentMaxSpeed)
+            else if (v < maxSpeed)
             {
-                v = Mathf.Min(v + ThrottleAcceleration(v, accel, slopeAccel, grounded) * dt, currentMaxSpeed);
+                v = Mathf.Min(v + ThrottleAcceleration(v, accel, slopeAccel, grounded) * dt, maxSpeed);
             }
         }
         else if (input < -0.1f)
@@ -1182,12 +1249,12 @@ public class Player : MonoBehaviour
                 v += slopeAccel * dt;
         }
 
-        if (v > currentMaxSpeed)
+        if (v > maxSpeed)
         {
             bool downhillPull = grounded && slopeAccel > overspeedSlopeHold;
             if (!downhillPull)
-                v = Mathf.MoveTowards(v, currentMaxSpeed, overspeedDeceleration * dt);
-            v = Mathf.Min(v, currentMaxSpeed * (1f + Mathf.Max(0f, downhillOverspeedFactor)));
+                v = Mathf.MoveTowards(v, maxSpeed, overspeedDeceleration * dt);
+            v = Mathf.Min(v, maxSpeed * (1f + Mathf.Max(0f, downhillOverspeedFactor)));
         }
 
         v = Mathf.Max(v, -Mathf.Max(maxRollBackSpeed, maxReverse));

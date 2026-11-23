@@ -29736,7 +29736,7 @@ PrefabInstance:
     - target: {fileID: 619629671414062907, guid: 725a38ab9fa9a4b13a72d7f449a56fbb,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: -113.27238
+      value: -113.28
       objectReference: {fileID: 0}
     - target: {fileID: 619629671414062907, guid: 725a38ab9fa9a4b13a72d7f449a56fbb,
         type: 3}
@@ -33875,6 +33875,12 @@ MonoBehaviour:
   driftRecoveryGrip: 5
   driftBodyAngle: 25.7
   driftBodyYawSpeed: 120
+  driftBoostMinDuration: 0.7
+  driftBoostInstantSpeed: 1.25
+  driftBoostSpeedBonus: 2
+  driftBoostAcceleration: 12
+  driftBoostDuration: 0.85
+  driftBoostCooldown: 0.8
   acceleration: 7
   topSpeedAccelerationFactor: 0.367
   coastDeceleration: 3.5
@@ -33978,8 +33984,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.99, y: 0.8, z: 2}
-  m_Center: {x: 0, y: 0.5, z: 0}
+  m_Size: {x: 0.99, y: 0.63873017, z: 2}
+  m_Center: {x: 0, y: 0.4193651, z: 0}
 --- !u!54 &1343382158
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -42337,7 +42343,7 @@ PrefabInstance:
     - target: {fileID: 619629671414062907, guid: 725a38ab9fa9a4b13a72d7f449a56fbb,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: -113.27238
+      value: -113.28
       objectReference: {fileID: 0}
     - target: {fileID: 619629671414062907, guid: 725a38ab9fa9a4b13a72d7f449a56fbb,
         type: 3}
