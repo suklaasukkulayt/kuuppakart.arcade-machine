@@ -729,13 +729,30 @@ MonoBehaviour:
   defaultGameplaySceneName: KKartOG
   difficultySceneName: DifficultySelect
   previewAnchor: {fileID: 1739646432}
+  previewCamera: {fileID: 0}
+  previewImage: {fileID: 1346071925}
+  previewRenderTexture: {fileID: 0}
+  previewLayer: 30
+  generatedCameraOffset: {x: 0, y: 2.2, z: -6}
+  previewLookAtOffset: {x: 0, y: 0.2, z: 0}
+  autoFramePreview: 1
+  previewFramingPadding: 1.35
   previewRotationSpeed: 25
+  previewTextureWidth: 1280
+  previewBackground: {r: 0, g: 0, b: 0, a: 0}
   carNameText: {fileID: 252894556}
   descriptionText: {fileID: 931067124}
   statsText: {fileID: 1698387165}
   carPositionText: {fileID: 460823374}
   speedometerDisplayMultiplier: 10
   speedUnit: km/h
+  statsBarsRoot: {fileID: 1079487088}
+  categoryColor: {r: 0.15, g: 0.68, b: 0.95, a: 1}
+  statTextColor: {r: 0.12, g: 0.14, b: 0.2, a: 1}
+  barBackgroundColor: {r: 0.12, g: 0.15, b: 0.2, a: 0.2}
+  barFillColor: {r: 0.08, g: 0.55, b: 0.95, a: 1}
+  statLabelWidth: 118
+  statValueWidth: 92
 --- !u!4 &321121842
 Transform:
   m_ObjectHideFlags: 0
@@ -860,8 +877,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 151.08551, y: -8.196098}
-  m_SizeDelta: {x: 482.78027, y: 285.2516}
+  m_AnchoredPosition: {x: 51.9, y: 176.69}
+  m_SizeDelta: {x: 141.6824, y: 74.2018}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &460823374
 MonoBehaviour:
@@ -1493,8 +1510,10 @@ RectTransform:
   - {fileID: 1117830747}
   - {fileID: 252894554}
   - {fileID: 931067122}
+  - {fileID: 1346071927}
   - {fileID: 1698387164}
   - {fileID: 460823373}
+  - {fileID: 1079487088}
   m_Father: {fileID: 1494198358}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1540,6 +1559,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 975023119}
   m_CullTransparentMesh: 1
+--- !u!1 &1079487087
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1079487088}
+  m_Layer: 5
+  m_Name: StatsBarRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1079487088
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1079487087}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 975023120}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 1, y: 0.5}
+  m_AnchorMax: {x: 1, y: 0.5}
+  m_AnchoredPosition: {x: 0.6539917, y: -10.108994}
+  m_SizeDelta: {x: 307.52808, y: 302.0571}
+  m_Pivot: {x: 1, y: 0.5}
 --- !u!1 &1117830746
 GameObject:
   m_ObjectHideFlags: 0
@@ -1810,6 +1864,78 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1337171160}
   m_CullTransparentMesh: 1
+--- !u!1 &1346071924
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1346071927}
+  - component: {fileID: 1346071926}
+  - component: {fileID: 1346071925}
+  m_Layer: 5
+  m_Name: CarPreviewImage
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1346071925
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1346071924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Texture: {fileID: 0}
+  m_UVRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+--- !u!222 &1346071926
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1346071924}
+  m_CullTransparentMesh: 1
+--- !u!224 &1346071927
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1346071924}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 975023120}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -175.3793, y: -10.1095}
+  m_SizeDelta: {x: 450, y: 265}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1494198354
 GameObject:
   m_ObjectHideFlags: 0
@@ -2222,8 +2348,8 @@ Transform:
   m_GameObject: {fileID: 1739646431}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 536.49963, y: 300.73798, z: 0}
-  m_LocalScale: {x: 10, y: 10, z: 10}
+  m_LocalPosition: {x: 329.1, y: 390.8, z: -19.7}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
