@@ -94,9 +94,12 @@ public class CarSelectionMenu : MonoBehaviour
 
     public void PreviousCar() => ChangeCar(-1);
     public void NextCar() => ChangeCar(1);
+    private bool isLoadingScene;
 
     public void ConfirmSelection()
     {
+        if (isLoadingScene) return;
+
         CarDefinition car = database != null ? database.GetCar(selectedIndex) : null;
         if (car == null)
         {
@@ -113,7 +116,8 @@ public class CarSelectionMenu : MonoBehaviour
 
         PlayerPrefs.SetString(CarSelectionKeys.SelectedCarIdKey, car.StableId);
         PlayerPrefs.Save();
-        SceneManager.LoadScene(scene);
+        isLoadingScene = true;
+        SceneManager.LoadScene(scene, LoadSceneMode.Single);
     }
 
     public void BackToDifficulty()
@@ -380,7 +384,7 @@ public class CarSelectionMenu : MonoBehaviour
         previewInstance.name = car.displayName + " Preview";
         previewInstance.transform.localPosition = car.visualLocalPosition;
         previewInstance.transform.localRotation = Quaternion.Euler(car.visualLocalEulerAngles);
-        previewInstance.transform.localScale = car.visualLocalScale;
+        previewInstance.transform.localScale = car.visualLocalScale * database.GetVisualScaleMultiplier(car);
         SetLayerRecursively(previewInstance.transform, Mathf.Clamp(previewLayer, 0, 31));
         MakeVisualOnly(previewInstance);
         if (autoFramePreview && previewCamera != null) FramePreview(previewInstance);

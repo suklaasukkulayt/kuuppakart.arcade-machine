@@ -13,6 +13,7 @@ public class CarDefinition : ScriptableObject
     public Vector3 visualLocalPosition = Vector3.zero;
     public Vector3 visualLocalEulerAngles = Vector3.zero;
     public Vector3 visualLocalScale = Vector3.one;
+    [Min(0.1f)] public float scale = 1f;
 
     [Header("Player settings")]
     public bool applyStatsToPlayer = true;

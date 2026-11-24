@@ -20,6 +20,7 @@ MonoBehaviour:
   visualLocalPosition: {x: 0, y: 0, z: 0}
   visualLocalEulerAngles: {x: 0, y: 0, z: 0}
   visualLocalScale: {x: 1, y: 1, z: 1}
+  scale: 1.25
   applyStatsToPlayer: 1
   topSpeed: 12
   acceleration: 5
