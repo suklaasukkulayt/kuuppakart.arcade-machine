@@ -50,6 +50,7 @@ public class Player : MonoBehaviour
     public float upFactor = 0.15f;
     public float minSpin = 1.5f;
     public float maxSpin = 6f;
+    [Min(0.01f)] public float crashReferenceMass = 1f;
     private RigidbodyConstraints normalConstraints;
 
     [Header("Boost settings")]
@@ -183,7 +184,6 @@ public class Player : MonoBehaviour
         currentMaxSpeed = baseSpeed;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.maxDepenetrationVelocity = Mathf.Clamp(maxDepenetrationVelocity, 1f, 2f);
-
         rb.sleepThreshold = 0f;
         if (interpolateBody)
             rb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -248,12 +248,26 @@ public class Player : MonoBehaviour
         }
     }
 
+    private float GetCrashMassMultiplier()
+    {
+        return Mathf.Sqrt(Mathf.Max(0.01f, crashReferenceMass) / Mathf.Max(0.01f, rb.mass));
+    }
+
     private void OnCollisionEnter(Collision collision)
     {
         if (GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
             return;
 
         RegisterGroundContact(collision);
+
+        AICar hitAI = collision.collider.GetComponentInParent<AICar>();
+        if (hitAI != null)
+        {
+            Vector3 hitDirection = hitAI.transform.position - transform.position;
+            hitAI.ReceivePlayerImpact(rb, hitDirection, collision.relativeVelocity.magnitude);
+            return;
+        }
+
         bool stepEdge = !isStunned && SuppressLowEdgeBounce(collision);
         if (stepEdge)
             return;
@@ -322,17 +336,17 @@ public class Player : MonoBehaviour
                 otherVel = otherBody.linearVelocity;
         }
         else if (otherBody != null)
-        {
             otherVel = otherBody.linearVelocity;
-        }
 
         float intoWall = Mathf.Max(0f, Vector3.Dot(intendedVelocity - otherVel, -away));
-        float impactSpeed = Mathf.Max(intoWall, Mathf.Abs(Vector3.Dot(collision.relativeVelocity, away)));
+        float rawImpactSpeed = Mathf.Max(intoWall, Mathf.Abs(Vector3.Dot(collision.relativeVelocity, away)));
+        float impactSpeed = rawImpactSpeed * GetCrashMassMultiplier();
         float minSpeed = hitCar ? carHitMinSpeed : crashMinSpeed;
         if (impactSpeed < minSpeed)
             return;
 
-        float severity = Mathf.InverseLerp(minSpeed, crashFullSpeed, impactSpeed);
+        float severity = Mathf.InverseLerp(minSpeed, Mathf.Max(minSpeed + 0.01f, crashFullSpeed), impactSpeed);
+
         if (autoCorrector != null)
             autoCorrector.Suspended = true;
 
@@ -554,7 +568,6 @@ public class Player : MonoBehaviour
         lowEdgeStepTargetY = selectedStepY;
         lowEdgeStepUntil = Time.time + 0.45f;
         ignoreBlockingUntil = Mathf.Max(ignoreBlockingUntil, Time.time + Mathf.Max(0.1f, blockedTimeLimit));
-
         blockedTimer = 0f;
         Vector3 velocity = rb.linearVelocity;
         if (velocity.y > 0f)
@@ -753,9 +766,7 @@ public class Player : MonoBehaviour
             rb.linearVelocity = velocity;
         }
         else
-        {
             UpdateBlockedSpeed(dt, grounded);
-        }
 
         Vector3 surfaceForward = flatForward;
         float slopeAccel = 0f;
@@ -1139,9 +1150,7 @@ public class Player : MonoBehaviour
             }
         }
         else
-        {
             blockedTimer = 0f;
-        }
     }
 
     private bool ProbeGround(Vector3 origin, float distance, out RaycastHit best)
@@ -1211,9 +1220,7 @@ public class Player : MonoBehaviour
                 }
             }
             else if (v < maxSpeed)
-            {
                 v = Mathf.Min(v + ThrottleAcceleration(v, accel, slopeAccel, grounded) * dt, maxSpeed);
-            }
         }
         else if (input < -0.1f)
         {
@@ -1229,9 +1236,7 @@ public class Player : MonoBehaviour
                 }
             }
             else if (v > -maxReverse)
-            {
                 v = Mathf.Max(v - reverseAccel * dt, -maxReverse);
-            }
         }
         else
         {

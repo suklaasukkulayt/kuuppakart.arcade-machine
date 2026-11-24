@@ -5423,6 +5423,8 @@ MonoBehaviour:
   stunImpactThreshold: 1
   stunDuration: 1.5
   extraSpinTorque: 8
+  knockbackUpFactor: 0.28
+  spinImpactFactor: 0.12
 --- !u!114 &215670168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5466,7 +5468,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 215670166}
   serializedVersion: 5
-  m_Mass: 40
+  m_Mass: 350
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -33938,6 +33940,7 @@ MonoBehaviour:
   upFactor: 0.15
   minSpin: 1.5
   maxSpin: 6
+  crashReferenceMass: 700
   boostSpeed: 16
   boostAcceleration: 14
   boostDuration: 1.5
@@ -34223,6 +34226,9 @@ MonoBehaviour:
   database: {fileID: 11400000, guid: d9953224ec7a9364e9872ceca12b314c, type: 2}
   visualMount: {fileID: 999496183}
   originalVisualRoot: {fileID: 1343382153}
+  cameraRoofClearance: 0.08
+  cameraRearClearance: 0.1
+  colliderPadding: {x: 0.08, y: 0.05, z: 0.12}
 --- !u!1 &1347729614
 GameObject:
   m_ObjectHideFlags: 0

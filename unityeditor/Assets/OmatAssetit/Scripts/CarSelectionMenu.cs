@@ -36,17 +36,22 @@ public class CarSelectionMenu : MonoBehaviour
 
     [Header("Stat bars")]
     [SerializeField] private RectTransform statsBarsRoot;
-    [SerializeField] private Color categoryColor = new Color(0.15f, 0.68f, 0.95f, 1f);
-    [SerializeField] private Color statTextColor = new Color(0.12f, 0.14f, 0.2f, 1f);
+    [SerializeField] private Color statTextColor = Color.black;
     [SerializeField] private Color barBackgroundColor = new Color(0.12f, 0.15f, 0.2f, 0.2f);
     [SerializeField] private Color barFillColor = new Color(0.08f, 0.55f, 0.95f, 1f);
-    [SerializeField] private float statLabelWidth = 110f;
-    [SerializeField] private float statValueWidth = 135f;
+    [Range(0.5f, 1f)] [SerializeField] private float barWidthRatio = 0.78f;
+
+    private const float BaseSpeedWeight = 0.8f;
+    private const float BoostSpeedWeight = 0.2f;
+    private const float SpeedCurvePower = 1.7f;
 
     private KuuppaKartControls controls;
     private int selectedIndex;
     private GameObject previewInstance;
     private bool ownsPreviewRenderTexture;
+    private bool isLoadingScene;
+    private Vector2 lastStatsRootSize;
+    private bool hasStatsRootSize;
 
     private void Start()
     {
@@ -58,32 +63,61 @@ public class CarSelectionMenu : MonoBehaviour
         }
 
         controls = KuuppaKartControls.EnsureInstance();
-        SetupPreviewOutput();
+        Canvas.ForceUpdateCanvases();
         SetupStatsLayout();
+        SetupPreviewOutput();
+
         selectedIndex = Mathf.Max(0, database.FindIndexById(PlayerPrefs.GetString(CarSelectionKeys.SelectedCarIdKey, string.Empty)));
         RefreshSelection();
     }
 
     private void Update()
     {
-        if (controls == null) controls = KuuppaKartControls.EnsureInstance();
+        if (controls == null)
+            controls = KuuppaKartControls.EnsureInstance();
 
         if (controls != null)
         {
-            if (controls.WasPressed(KuuppaKartAction.MenuLeft) || controls.WasPressed(KuuppaKartAction.MenuUp)) PreviousCar();
-            else if (controls.WasPressed(KuuppaKartAction.MenuRight) || controls.WasPressed(KuuppaKartAction.MenuDown)) NextCar();
-            else if (controls.WasPressed(KuuppaKartAction.MenuConfirm)) ConfirmSelection();
-            else if (controls.WasPressed(KuuppaKartAction.MenuBack)) BackToDifficulty();
+            if (controls.WasPressed(KuuppaKartAction.MenuLeft) || controls.WasPressed(KuuppaKartAction.MenuUp))
+                PreviousCar();
+            else if (controls.WasPressed(KuuppaKartAction.MenuRight) || controls.WasPressed(KuuppaKartAction.MenuDown))
+                NextCar();
+            else if (controls.WasPressed(KuuppaKartAction.MenuConfirm))
+                ConfirmSelection();
+            else if (controls.WasPressed(KuuppaKartAction.MenuBack))
+                BackToDifficulty();
         }
 
         if (previewInstance != null && previewRotationSpeed != 0f)
             previewInstance.transform.Rotate(Vector3.up, previewRotationSpeed * Time.deltaTime, Space.World);
     }
 
+    private void LateUpdate()
+    {
+        if (statsBarsRoot == null || database == null)
+            return;
+
+        Vector2 currentSize = statsBarsRoot.rect.size;
+
+        if (!hasStatsRootSize || (currentSize - lastStatsRootSize).sqrMagnitude > 1f)
+        {
+            lastStatsRootSize = currentSize;
+            hasStatsRootSize = true;
+
+            CarDefinition car = database.GetCar(selectedIndex);
+
+            if (car != null)
+                BuildStatsBars(car);
+        }
+    }
+
     private void OnDestroy()
     {
-        if (previewCamera != null && previewCamera.targetTexture == previewRenderTexture) previewCamera.targetTexture = null;
-        if (previewImage != null && previewImage.texture == previewRenderTexture) previewImage.texture = null;
+        if (previewCamera != null && previewCamera.targetTexture == previewRenderTexture)
+            previewCamera.targetTexture = null;
+
+        if (previewImage != null && previewImage.texture == previewRenderTexture)
+            previewImage.texture = null;
 
         if (ownsPreviewRenderTexture && previewRenderTexture != null)
         {
@@ -94,11 +128,11 @@ public class CarSelectionMenu : MonoBehaviour
 
     public void PreviousCar() => ChangeCar(-1);
     public void NextCar() => ChangeCar(1);
-    private bool isLoadingScene;
 
     public void ConfirmSelection()
     {
-        if (isLoadingScene) return;
+        if (isLoadingScene)
+            return;
 
         CarDefinition car = database != null ? database.GetCar(selectedIndex) : null;
         if (car == null)
@@ -133,14 +167,18 @@ public class CarSelectionMenu : MonoBehaviour
 
     public void SelectCarByIndex(int index)
     {
-        if (database == null || database.Count == 0) return;
+        if (database == null || database.Count == 0)
+            return;
+
         selectedIndex = Mathf.Clamp(index, 0, database.Count - 1);
         RefreshSelection();
     }
 
     private void ChangeCar(int direction)
     {
-        if (database == null || database.Count == 0) return;
+        if (database == null || database.Count == 0)
+            return;
+
         selectedIndex = (selectedIndex + direction + database.Count) % database.Count;
         RefreshSelection();
     }
@@ -150,19 +188,30 @@ public class CarSelectionMenu : MonoBehaviour
         CarDefinition car = database.GetCar(selectedIndex);
         if (car == null)
         {
-            if (carNameText != null) carNameText.text = "MISSING CAR";
-            if (descriptionText != null) descriptionText.text = "This entry is empty. Check the Car Database.";
+            if (carNameText != null)
+                carNameText.text = "MISSING CAR";
+
+            if (descriptionText != null)
+                descriptionText.text = "This entry is empty. Check the Car Database.";
+
             ClearPreview();
             ClearStatsBars();
             return;
         }
 
-        if (carNameText != null) carNameText.text = car.displayName;
-        if (descriptionText != null) descriptionText.text = car.description;
-        if (carPositionText != null) carPositionText.text = (selectedIndex + 1) + " / " + database.Count;
+        if (carNameText != null)
+            carNameText.text = car.displayName;
 
-        if (statsBarsRoot != null) BuildStatsBars(car);
-        else if (statsText != null) statsText.text = BuildStatsText(car);
+        if (descriptionText != null)
+            descriptionText.text = car.description;
+
+        if (carPositionText != null)
+            carPositionText.text = (selectedIndex + 1) + " / " + database.Count;
+
+        if (statsBarsRoot != null)
+            BuildStatsBars(car);
+        else if (statsText != null)
+            statsText.text = BuildStatsText(car);
 
         RefreshPreview(car);
     }
@@ -178,53 +227,129 @@ public class CarSelectionMenu : MonoBehaviour
 
     private void SetupStatsLayout()
     {
-        if (statsBarsRoot == null) return;
-        if (statsText != null) statsText.gameObject.SetActive(false);
+        if (statsBarsRoot == null)
+            return;
+
+        if (statsText != null)
+            statsText.gameObject.SetActive(false);
 
         VerticalLayoutGroup layout = statsBarsRoot.GetComponent<VerticalLayoutGroup>();
-        if (layout == null) layout = statsBarsRoot.gameObject.AddComponent<VerticalLayoutGroup>();
+
+        if (layout == null)
+            layout = statsBarsRoot.gameObject.AddComponent<VerticalLayoutGroup>();
 
         layout.childAlignment = TextAnchor.UpperLeft;
-        layout.spacing = 6f;
+        layout.spacing = 5f;
         layout.padding = new RectOffset(0, 0, 0, 0);
         layout.childControlWidth = true;
         layout.childControlHeight = true;
         layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = false;
+        layout.childForceExpandHeight = true;
 
         ContentSizeFitter fitter = statsBarsRoot.GetComponent<ContentSizeFitter>();
-        if (fitter == null) fitter = statsBarsRoot.gameObject.AddComponent<ContentSizeFitter>();
-        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        if (fitter != null)
+        {
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+        }
     }
 
     private void BuildStatsBars(CarDefinition car)
     {
+        if (statsBarsRoot == null || car == null)
+            return;
+
         ClearStatsBars();
 
-        AddCategoryBar("SPEED", SpeedValue(car.topSpeed) + " / " + SpeedValue(car.boostMaxSpeed),
-            Average(Ratio(car.topSpeed, c => c.topSpeed), Ratio(car.boostMaxSpeed, c => c.boostMaxSpeed),
-            Ratio(car.boostDuration, c => c.boostDuration), InverseRatio(car.boostCooldown, c => c.boostCooldown)));
+        VerticalLayoutGroup rootLayout = statsBarsRoot.GetComponent<VerticalLayoutGroup>();
 
-        AddCategoryBar("ACCELERATION", car.acceleration.ToString("0.0") + " / " + car.boostAcceleration.ToString("0.0"),
-            Average(Ratio(car.acceleration, c => c.acceleration), Ratio(car.boostAcceleration, c => c.boostAcceleration)));
+        if (rootLayout != null)
+            rootLayout.spacing = Mathf.Clamp(statsBarsRoot.rect.height * 0.015f, 2f, 8f);
 
-        AddCategoryBar("DRIFTING", car.driftBodyAngle.ToString("0") + "° / " + car.driftLateralSpeed.ToString("0.0") + " / " + car.driftRecoveryGrip.ToString("0.0"),
-            Average(Ratio(car.driftBodyAngle, c => c.driftBodyAngle), Ratio(car.driftLateralSpeed, c => c.driftLateralSpeed),
-            Ratio(car.driftLateralAcceleration, c => c.driftLateralAcceleration), Ratio(car.driftYawMultiplier, c => c.driftYawMultiplier),
-            Ratio(car.driftRecoveryGrip, c => c.driftRecoveryGrip)));
+        AddCategoryBar("SPEED", GetCategoryBarAmount(car, 0));
+        AddCategoryBar("ACCELERATION", GetCategoryBarAmount(car, 1));
+        AddCategoryBar("DRIFTING", GetCategoryBarAmount(car, 2));
+        AddCategoryBar("HANDLING", GetCategoryBarAmount(car, 3));
+        AddCategoryBar("WEIGHT", GetCategoryBarAmount(car, 4));
 
-        AddCategoryBar("HANDLING", car.turnSpeed.ToString("0") + " deg/s / " + car.brakePower.ToString("0.0"),
-            Average(Ratio(car.turnSpeed, c => c.turnSpeed), Ratio(car.brakePower, c => c.brakePower)));
+        lastStatsRootSize = statsBarsRoot.rect.size;
+        hasStatsRootSize = true;
+    }
 
-        AddCategoryBar("WEIGHT", car.rigidbodyMass.ToString("0") + " kg",
-            Ratio(car.rigidbodyMass, c => c.rigidbodyMass));
+    private float GetCategoryScore(CarDefinition car, int category)
+    {
+        switch (category)
+        {
+            case 0:
+                float baseRatio = Ratio(car.topSpeed, c => c.topSpeed);
+                float boostRatio = Ratio(car.boostMaxSpeed, c => c.boostMaxSpeed);
+
+                float baseScore = Mathf.Pow(baseRatio, SpeedCurvePower);
+                float boostScore = Mathf.Pow(boostRatio, SpeedCurvePower);
+
+                return baseScore * BaseSpeedWeight + boostScore * BoostSpeedWeight;
+
+            case 1:
+                return Average(
+                    Ratio(car.acceleration, c => c.acceleration),
+                    Ratio(car.boostAcceleration, c => c.boostAcceleration)
+                );
+
+            case 2:
+                return Average(
+                    Ratio(car.driftBodyAngle, c => c.driftBodyAngle),
+                    Ratio(car.driftLateralSpeed, c => c.driftLateralSpeed),
+                    Ratio(car.driftLateralAcceleration, c => c.driftLateralAcceleration),
+                    Ratio(car.driftYawMultiplier, c => c.driftYawMultiplier),
+                    Ratio(car.driftRecoveryGrip, c => c.driftRecoveryGrip)
+                );
+
+            case 3:
+                return Average(
+                    Ratio(car.turnSpeed, c => c.turnSpeed),
+                    Ratio(car.brakePower, c => c.brakePower)
+                );
+
+            case 4:
+                return car.rigidbodyMass;
+
+            default:
+                return 0f;
+        }
+    }
+
+    private float GetCategoryBarAmount(CarDefinition car, int category)
+    {
+        float minimum = float.MaxValue;
+        float maximum = float.MinValue;
+
+        for (int i = 0; i < database.Count; i++)
+        {
+            CarDefinition entry = database.GetCar(i);
+
+            if (entry == null)
+                continue;
+
+            float score = GetCategoryScore(entry, category);
+            minimum = Mathf.Min(minimum, score);
+            maximum = Mathf.Max(maximum, score);
+        }
+
+        if (minimum == float.MaxValue || maximum - minimum < 0.0001f)
+            return 0.65f;
+
+        float normalized = Mathf.InverseLerp(minimum, maximum, GetCategoryScore(car, category));
+        return Mathf.Lerp(0.3f, 1f, normalized);
     }
 
     private float Average(params float[] values)
     {
         float total = 0f;
-        for (int i = 0; i < values.Length; i++) total += values[i];
+
+        for (int i = 0; i < values.Length; i++)
+            total += values[i];
+
         return values.Length > 0 ? total / values.Length : 0f;
     }
 
@@ -234,54 +359,56 @@ public class CarSelectionMenu : MonoBehaviour
         for (int i = 0; i < database.Count; i++)
         {
             CarDefinition entry = database.GetCar(i);
-            if (entry != null) maximum = Mathf.Max(maximum, selector(entry));
+
+            if (entry != null)
+                maximum = Mathf.Max(maximum, selector(entry));
         }
         return maximum > 0.0001f ? Mathf.Clamp01(value / maximum) : 1f;
     }
 
-    private float InverseRatio(float value, Func<CarDefinition, float> selector)
+    private void AddCategoryBar(string title, float amount)
     {
-        float minimum = float.MaxValue;
-        for (int i = 0; i < database.Count; i++)
-        {
-            CarDefinition entry = database.GetCar(i);
-            if (entry != null && selector(entry) > 0.0001f) minimum = Mathf.Min(minimum, selector(entry));
-        }
-        return minimum == float.MaxValue || value <= 0.0001f ? 1f : Mathf.Clamp01(minimum / value);
-    }
+        float rowHeight = Mathf.Max(20f, statsBarsRoot.rect.height / 5f);
+        float fontSize = Mathf.Clamp(rowHeight * 0.36f, 11f, 38f);
+        float barHeight = Mathf.Clamp(rowHeight * 0.2f, 7f, 18f);
+        float barWidth = statsBarsRoot.rect.width * Mathf.Clamp(barWidthRatio, 0.5f, 1f);
 
-    private void AddCategoryBar(string title, string value, float amount)
-    {
-        GameObject rowObject = new GameObject(title, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+        GameObject rowObject = new GameObject(title, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
         rowObject.transform.SetParent(statsBarsRoot, false);
 
         LayoutElement rowElement = rowObject.GetComponent<LayoutElement>();
-        rowElement.minHeight = rowElement.preferredHeight = 30f;
+        rowElement.minHeight = rowHeight * 0.8f;
+        rowElement.flexibleHeight = 1f;
         rowElement.flexibleWidth = 1f;
 
-        HorizontalLayoutGroup row = rowObject.GetComponent<HorizontalLayoutGroup>();
-        row.spacing = 7f;
-        row.childAlignment = TextAnchor.MiddleLeft;
+        VerticalLayoutGroup row = rowObject.GetComponent<VerticalLayoutGroup>();
+        row.childAlignment = TextAnchor.UpperLeft;
+        row.spacing = Mathf.Clamp(rowHeight * 0.025f, 1f, 4f);
+        row.padding = new RectOffset(0, 0, 0, 0);
         row.childControlWidth = true;
         row.childControlHeight = true;
         row.childForceExpandWidth = false;
         row.childForceExpandHeight = false;
 
-        TMP_Text label = CreateText(rowObject.transform, 15f, FontStyles.Bold, TextAlignmentOptions.Left);
+        TMP_Text label = CreateText(rowObject.transform, fontSize, FontStyles.Bold, TextAlignmentOptions.Left);
         label.text = title;
-        label.color = categoryColor;
+        label.color = Color.black;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = Mathf.Max(8f, fontSize * 0.65f);
+        label.fontSizeMax = fontSize;
 
         LayoutElement labelElement = label.gameObject.AddComponent<LayoutElement>();
-        labelElement.minWidth = labelElement.preferredWidth = statLabelWidth;
+        labelElement.minWidth = labelElement.preferredWidth = barWidth;
+        labelElement.minHeight = labelElement.preferredHeight = fontSize * 1.2f;
 
         GameObject barObject = new GameObject("Bar", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
         barObject.transform.SetParent(rowObject.transform, false);
 
         LayoutElement barElement = barObject.GetComponent<LayoutElement>();
-        barElement.minWidth = 50f;
-        barElement.preferredWidth = 100f;
-        barElement.flexibleWidth = 1f;
-        barElement.minHeight = barElement.preferredHeight = 12f;
+        barElement.minWidth = Mathf.Min(60f, barWidth);
+        barElement.preferredWidth = barWidth;
+        barElement.flexibleWidth = 0f;
+        barElement.minHeight = barElement.preferredHeight = barHeight;
 
         Image background = barObject.GetComponent<Image>();
         background.color = barBackgroundColor;
@@ -299,12 +426,6 @@ public class CarSelectionMenu : MonoBehaviour
         fill.type = Image.Type.Simple;
         fill.color = barFillColor;
         fill.raycastTarget = false;
-
-        TMP_Text valueText = CreateText(rowObject.transform, 13f, FontStyles.Normal, TextAlignmentOptions.Right);
-        valueText.text = value;
-
-        LayoutElement valueElement = valueText.gameObject.AddComponent<LayoutElement>();
-        valueElement.minWidth = valueElement.preferredWidth = statValueWidth;
     }
 
     private TMP_Text CreateText(Transform parent, float size, FontStyles style, TextAlignmentOptions alignment)
@@ -312,7 +433,10 @@ public class CarSelectionMenu : MonoBehaviour
         GameObject go = new GameObject("Text", typeof(RectTransform));
         go.transform.SetParent(parent, false);
         TMP_Text text = go.AddComponent<TextMeshProUGUI>();
-        if (carNameText != null && carNameText.font != null) text.font = carNameText.font;
+
+        if (carNameText != null && carNameText.font != null)
+            text.font = carNameText.font;
+
         text.fontSize = size;
         text.fontStyle = style;
         text.alignment = alignment;
@@ -326,13 +450,17 @@ public class CarSelectionMenu : MonoBehaviour
 
     private void ClearStatsBars()
     {
-        if (statsBarsRoot == null) return;
-        for (int i = statsBarsRoot.childCount - 1; i >= 0; i--) Destroy(statsBarsRoot.GetChild(i).gameObject);
+        if (statsBarsRoot == null)
+            return;
+
+        for (int i = statsBarsRoot.childCount - 1; i >= 0; i--)
+            Destroy(statsBarsRoot.GetChild(i).gameObject);
     }
 
     private void SetupPreviewOutput()
     {
-        if (previewAnchor == null) return;
+        if (previewAnchor == null)
+            return;
 
         if (previewCamera == null)
         {
@@ -343,7 +471,8 @@ public class CarSelectionMenu : MonoBehaviour
             previewCamera.transform.LookAt(previewAnchor.position + previewLookAtOffset);
         }
 
-        if (previewImage == null) return;
+        if (previewImage == null)
+            return;
 
         if (previewRenderTexture == null)
         {
@@ -372,13 +501,17 @@ public class CarSelectionMenu : MonoBehaviour
         previewImage.color = Color.white;
 
         Camera mainCamera = Camera.main;
-        if (mainCamera != null && mainCamera != previewCamera) mainCamera.cullingMask &= ~(1 << Mathf.Clamp(previewLayer, 0, 31));
+
+        if (mainCamera != null && mainCamera != previewCamera)
+            mainCamera.cullingMask &= ~(1 << Mathf.Clamp(previewLayer, 0, 31));
     }
 
     private void RefreshPreview(CarDefinition car)
     {
         ClearPreview();
-        if (previewAnchor == null || car.visualPrefab == null) return;
+
+        if (previewAnchor == null || car.visualPrefab == null)
+            return;
 
         previewInstance = Instantiate(car.visualPrefab, previewAnchor, false);
         previewInstance.name = car.displayName + " Preview";
@@ -387,17 +520,25 @@ public class CarSelectionMenu : MonoBehaviour
         previewInstance.transform.localScale = car.visualLocalScale * database.GetVisualScaleMultiplier(car);
         SetLayerRecursively(previewInstance.transform, Mathf.Clamp(previewLayer, 0, 31));
         MakeVisualOnly(previewInstance);
-        if (autoFramePreview && previewCamera != null) FramePreview(previewInstance);
+
+        if (autoFramePreview && previewCamera != null)
+            FramePreview(previewInstance);
     }
 
     private void FramePreview(GameObject carObject)
     {
-        if (previewCamera == null || carObject == null) return;
+        if (previewCamera == null || carObject == null)
+            return;
+
         Renderer[] renderers = carObject.GetComponentsInChildren<Renderer>(true);
-        if (renderers.Length == 0) return;
+
+        if (renderers.Length == 0)
+            return;
 
         Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+        for (int i = 1; i < renderers.Length; i++)
+            bounds.Encapsulate(renderers[i].bounds);
 
         Vector3 target = bounds.center + previewLookAtOffset;
         Vector3 localDirection = previewCameraLocalDirection.sqrMagnitude > 0.001f ? previewCameraLocalDirection : new Vector3(-0.8f, 1f, -1.8f);
@@ -429,12 +570,16 @@ public class CarSelectionMenu : MonoBehaviour
     private void SetLayerRecursively(Transform root, int layer)
     {
         root.gameObject.layer = layer;
-        for (int i = 0; i < root.childCount; i++) SetLayerRecursively(root.GetChild(i), layer);
+
+        for (int i = 0; i < root.childCount; i++)
+            SetLayerRecursively(root.GetChild(i), layer);
     }
 
     private void ClearPreview()
     {
-        if (previewInstance == null) return;
+        if (previewInstance == null)
+            return;
+
         Destroy(previewInstance);
         previewInstance = null;
     }
@@ -442,7 +587,9 @@ public class CarSelectionMenu : MonoBehaviour
     private void MakeVisualOnly(GameObject carObject)
     {
         Collider[] colliders = carObject.GetComponentsInChildren<Collider>(true);
-        for (int i = 0; i < colliders.Length; i++) colliders[i].enabled = false;
+
+        for (int i = 0; i < colliders.Length; i++)
+            colliders[i].enabled = false;
 
         Rigidbody[] bodies = carObject.GetComponentsInChildren<Rigidbody>(true);
         for (int i = 0; i < bodies.Length; i++)
@@ -452,12 +599,18 @@ public class CarSelectionMenu : MonoBehaviour
         }
 
         MonoBehaviour[] scripts = carObject.GetComponentsInChildren<MonoBehaviour>(true);
-        for (int i = 0; i < scripts.Length; i++) scripts[i].enabled = false;
+
+        for (int i = 0; i < scripts.Length; i++)
+            scripts[i].enabled = false;
 
         Camera[] cameras = carObject.GetComponentsInChildren<Camera>(true);
-        for (int i = 0; i < cameras.Length; i++) cameras[i].enabled = false;
+
+        for (int i = 0; i < cameras.Length; i++)
+            cameras[i].enabled = false;
 
         AudioListener[] listeners = carObject.GetComponentsInChildren<AudioListener>(true);
-        for (int i = 0; i < listeners.Length; i++) listeners[i].enabled = false;
+
+        for (int i = 0; i < listeners.Length; i++)
+            listeners[i].enabled = false;
     }
 }
