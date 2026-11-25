@@ -160,7 +160,7 @@ public class DifficultySelector : MonoBehaviour
                 }
             PlayerPrefs.SetString(CarSelectionKeys.PendingGameplaySceneKey, scene);
             PlayerPrefs.Save();
-            SceneManager.LoadScene("CarSelect");
+            SceneTransitionManager.LoadScene("CarSelect");
             return;
         }
 
@@ -169,7 +169,7 @@ public class DifficultySelector : MonoBehaviour
             Debug.LogError("DifficultySelector: The selected gameplay scene is not included in Build Settings: " + scene);
             return;
         }
-        SceneManager.LoadScene(scene);
+        SceneTransitionManager.LoadScene(scene); 
     }
 
     private void RefreshAll()

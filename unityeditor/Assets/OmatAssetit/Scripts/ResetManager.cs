@@ -7,11 +7,11 @@ public class ResetManager : MonoBehaviour
     {
         if (!Application.CanStreamedLevelBeLoaded("StartScreen"))
         {
-            Debug.LogError("ResetManager: StartScreen is not included in Build Settings.");
+            Debug.LogError("ResetManager has a small message for u: YOU ARE A BOT BRO how do you not HAVE STARTSCREEN in BUILD SETTINGs YOU ARE A POTATO !!!1");
             return;
         }
         Time.timeScale = 1f;
-        SceneManager.LoadScene("StartScreen");
+        SceneTransitionManager.LoadScene("StartScreen");
     }
 
     private void Update()

@@ -1202,7 +1202,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 1331006986}
         m_TargetAssemblyTypeName: DifficultySelector, Assembly-CSharp
         m_MethodName: MouseConfirm
         m_Mode: 1
@@ -1213,7 +1213,7 @@ MonoBehaviour:
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
-        m_CallState: 2
+        m_CallState: 1
 --- !u!114 &685168355
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1898,7 +1898,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 1331006986}
         m_TargetAssemblyTypeName: DifficultySelector, Assembly-CSharp
         m_MethodName: MouseBack
         m_Mode: 1
@@ -1909,7 +1909,7 @@ MonoBehaviour:
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
-        m_CallState: 2
+        m_CallState: 1
 --- !u!114 &1337171163
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2425,7 +2425,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 1331006986}
         m_TargetAssemblyTypeName: DifficultySelector, Assembly-CSharp
         m_MethodName: MouseNext
         m_Mode: 1
@@ -2436,7 +2436,7 @@ MonoBehaviour:
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
-        m_CallState: 2
+        m_CallState: 1
 --- !u!114 &1502188003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2833,7 +2833,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 1331006986}
         m_TargetAssemblyTypeName: DifficultySelector, Assembly-CSharp
         m_MethodName: MousePrevious
         m_Mode: 1
@@ -2844,7 +2844,7 @@ MonoBehaviour:
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
-        m_CallState: 2
+        m_CallState: 1
 --- !u!114 &1912276428
 MonoBehaviour:
   m_ObjectHideFlags: 0

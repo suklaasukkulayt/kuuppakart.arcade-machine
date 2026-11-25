@@ -151,7 +151,7 @@ public class CarSelectionMenu : MonoBehaviour
         PlayerPrefs.SetString(CarSelectionKeys.SelectedCarIdKey, car.StableId);
         PlayerPrefs.Save();
         isLoadingScene = true;
-        SceneManager.LoadScene(scene, LoadSceneMode.Single);
+        SceneTransitionManager.LoadScene(scene, LoadSceneMode.Single);
     }
 
     public void BackToDifficulty()
@@ -162,7 +162,7 @@ public class CarSelectionMenu : MonoBehaviour
             return;
         }
 
-        SceneManager.LoadScene(difficultySceneName);
+        SceneTransitionManager.LoadScene(difficultySceneName);
     }
 
     public void SelectCarByIndex(int index)

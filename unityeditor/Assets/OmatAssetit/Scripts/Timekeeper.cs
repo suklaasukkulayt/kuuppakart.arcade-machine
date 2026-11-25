@@ -256,7 +256,7 @@ public class Tuomari : MonoBehaviour
             secondsLeft--;
         }
 
-        SceneManager.LoadScene(mainMenuSceneName);
+        SceneTransitionManager.LoadScene(mainMenuSceneName);
     }
 
     private TMP_Text FindBoostText()

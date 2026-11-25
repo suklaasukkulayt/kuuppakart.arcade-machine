@@ -30,6 +30,6 @@ public class StartMenuManager : MonoBehaviour
             Debug.LogError("StartMenuManager: DifficultySelect is not included in Build Settings.");
             return;
         }
-        SceneManager.LoadScene("DifficultySelect");
+        SceneTransitionManager.LoadScene("DifficultySelect");
     }
 }

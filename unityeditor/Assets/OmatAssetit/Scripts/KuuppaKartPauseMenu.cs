@@ -466,7 +466,7 @@ public sealed class KuuppaKartPauseMenu : MonoBehaviour
         editingSetting = false;
         menuRoot.SetActive(false);
         SetMenuButtonsVisible(false);
-        SceneManager.LoadScene("StartScreen");
+        SceneTransitionManager.LoadScene("StartScreen");
     }
 
     private void MoveSelection(int direction)
