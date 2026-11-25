@@ -53,6 +53,12 @@ public class PlayerCarStatsApplier : MonoBehaviour
         {
             FitCameras(newBounds);
             UpdatePlayerCollider(newBounds);
+            PlayerCarEffects effects = GetComponent<PlayerCarEffects>();
+
+            if (effects == null)
+                effects = gameObject.AddComponent<PlayerCarEffects>();
+
+            effects.Initialize(player, newBounds);
         }
     }
 
