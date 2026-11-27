@@ -2,6 +2,8 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using System.Collections.Generic;
+using System.Text;
 
 public class Tuomari : MonoBehaviour
 {
@@ -19,6 +21,12 @@ public class Tuomari : MonoBehaviour
     public TMP_Text lapsText;
     public TMP_Text racetimeText;
     public TMP_Text parasIkinAikaText;
+    public TMP_Text leaderboardText;
+
+    [Header("Race HUD")]
+    public TMP_Text raceTimeHudText;
+    public TMP_Text playerPositionText;
+    [Min(0.05f)] public float raceHudRefreshInterval = 0.2f;
 
     [Header("Victory Camera")]
     public Transform victoryCamera;
@@ -29,31 +37,52 @@ public class Tuomari : MonoBehaviour
 
     [Header("Return To Main Menu")]
     public float backToMenuDelay = 10f;
-    [Tooltip("Scene to load after the countdown.")]
     public string mainMenuSceneName = "StartScreen";
 
-    private bool winnerDeclared = false;
-    private bool raceTimerStarted = false;
+    private bool winnerDeclared;
+    private bool raceTimerStarted;
     private float raceStartTime;
     private float previousLapTime;
+    private float finalRaceTime;
+    private float hudRefreshTimer;
     private const string BestTimeKey = "Ajopeli_BestTime";
     private Coroutine victoryCameraRoutine;
     private LookBackCamera lookBackCameraController;
+    private CheckpointTarkistus[] orderedCheckpoints = new CheckpointTarkistus[0];
+    private readonly Dictionary<CarIdentify, float> finishTimes = new Dictionary<CarIdentify, float>();
+    private readonly Dictionary<CarIdentify, string> carDisplayNames = new Dictionary<CarIdentify, string>();
+    private readonly Dictionary<string, int> aiModelNameCounts = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+
+    private class RaceStanding
+    {
+        public CarIdentify car;
+        public float progress;
+        public float finishTime;
+        public bool hasFinished;
+    }
 
     private void Start()
     {
         winnerDeclared = false;
         raceTimerStarted = false;
         previousLapTime = 0f;
+        finalRaceTime = 0f;
+        hudRefreshTimer = 0f;
+        finishTimes.Clear();
+        CacheCheckpoints();
+        CacheCarDisplayNames();
 
         if (resultText != null)
             resultText.text = "";
 
+        if (leaderboardText != null)
+            leaderboardText.text = "";
+
         SetLapTextVisible(kierros1Text, true);
         SetLapTextVisible(kierros2Text, true);
         SetLapTextVisible(kierros3Text, true);
-
         SetBestTimeVisible(false);
+        SetRaceHudVisible(false);
 
         if (lapsText == null)
             lapsText = FindLapsText();
@@ -62,15 +91,31 @@ public class Tuomari : MonoBehaviour
     private void Update()
     {
         if (!raceTimerStarted && GameManager.Instance != null && GameManager.Instance.Phase == RacePhase.Racing)
+            StartRaceTimer();
+
+        if (!raceTimerStarted)
+            return;
+
+        float elapsed = winnerDeclared ? finalRaceTime : Time.time - raceStartTime;
+        if (raceTimeHudText != null)
+            raceTimeHudText.text = $"{FormatTime(elapsed)}";
+
+        if (winnerDeclared || GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
+            return;
+
+        hudRefreshTimer -= Time.deltaTime;
+        if (hudRefreshTimer <= 0f)
         {
-            raceTimerStarted = true;
-            raceStartTime = Time.time;
-            previousLapTime = 0f;
+            RefreshPlayerPosition();
+            hudRefreshTimer = Mathf.Max(0.05f, raceHudRefreshInterval);
         }
     }
 
     private void OnTriggerEnter(Collider car)
     {
+        if (winnerDeclared || GameManager.Instance == null || GameManager.Instance.Phase != RacePhase.Racing)
+            return;
+
         CarIdentify id = car.GetComponent<CarIdentify>();
         if (id == null)
             return;
@@ -81,6 +126,8 @@ public class Tuomari : MonoBehaviour
             Debug.LogWarning("[Tuomari] Car is missing LapCounter.");
             return;
         }
+
+        EnsureRaceTimerStarted();
 
         if (id.kind == CarKind.AI)
         {
@@ -108,7 +155,7 @@ public class Tuomari : MonoBehaviour
 
         if (id.kind == CarKind.Player)
         {
-            var validator = car.GetComponent<PelaajanKierrosTarkastus>();
+            PelaajanKierrosTarkastus validator = car.GetComponent<PelaajanKierrosTarkastus>();
             if (validator == null)
             {
                 Debug.LogError("PelaajanKierrosTarkastus component is missing.");
@@ -124,60 +171,334 @@ public class Tuomari : MonoBehaviour
 
             int completedLapNumber = lap.lapsCompleted + 1;
             RecordPlayerLapTime(completedLapNumber);
-
             validator.UpdateLapsText(completedLapNumber, kierrostenMaara);
             validator.ResetLap();
         }
 
         lap.lapsCompleted++;
 
-        if (!winnerDeclared && lap.lapsCompleted >= kierrostenMaara)
+        if (lap.lapsCompleted >= kierrostenMaara)
         {
-            string winnerName = id.displayName;
-            winnerDeclared = true;
+            RegisterFinish(id);
 
-            float totalTime = raceTimerStarted ? Time.time - raceStartTime : 0f;
-            string totalTimeString = FormatTime(totalTime);
-
-            if (resultText != null)
-                resultText.text = $"<mark>WINNER: {winnerName}</mark>";
-
-            if (lapsText == null)
-                lapsText = FindLapsText();
-
-            if (racetimeText != null)
-                racetimeText.text = $"Race time: {totalTimeString}";
-
-            if (victoryPanel != null)
-                victoryPanel.SetActive(true);
-
-            UpdateBestTime(totalTime);
-
-            if (GameManager.Instance != null)
-                GameManager.Instance.Phase = RacePhase.Finished;
-
-            Debug.Log($"WINNER: {winnerName}, Race time: {totalTimeString}");
+            if (id.kind == CarKind.AI)
+            {
+                FreezeFinishedAI(car);
+                RefreshPlayerPosition();
+                return;
+            }
 
             if (id.kind == CarKind.Player)
-                ShowVictoryCamera(id.transform);
-
-            StartCoroutine(BackToMainMenuCountdown());
+                FinishRace(id);
         }
+        else if (id.kind == CarKind.Player)
+        {
+            RefreshPlayerPosition();
+        }
+    }
+
+    private void StartRaceTimer()
+    {
+        raceTimerStarted = true;
+        raceStartTime = Time.time;
+        previousLapTime = 0f;
+        SetRaceHudVisible(true);
+        RefreshPlayerPosition();
+    }
+
+    private void EnsureRaceTimerStarted()
+    {
+        if (!raceTimerStarted)
+            StartRaceTimer();
+    }
+
+    private void RegisterFinish(CarIdentify car)
+    {
+        if (car == null || finishTimes.ContainsKey(car))
+            return;
+
+        finishTimes.Add(car, Time.time - raceStartTime);
+    }
+
+    private void FreezeFinishedAI(Collider car)
+    {
+        AICar ai = car.GetComponent<AICar>();
+        if (ai != null)
+            ai.enabled = false;
+
+        Collider[] colliders = car.GetComponentsInChildren<Collider>();
+        foreach (Collider collider in colliders)
+            collider.enabled = false;
+
+        Rigidbody body = car.GetComponent<Rigidbody>();
+        if (body != null)
+        {
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.isKinematic = true;
+        }
+    }
+
+    private void FinishRace(CarIdentify player)
+    {
+        winnerDeclared = true;
+        finalRaceTime = finishTimes[player];
+
+        List<RaceStanding> standings = GetStandings();
+        if (standings.Count == 0)
+            return;
+
+        RaceStanding winner = standings[0];
+        string winnerName = GetCarDisplayName(winner.car);
+        string playerTimeString = FormatTime(finalRaceTime);
+
+        if (resultText != null)
+            resultText.text = $"<mark>WINNER: {winnerName}</mark>";
+
+        if (lapsText == null)
+            lapsText = FindLapsText();
+
+        if (racetimeText != null)
+            racetimeText.text = $"Race time: {playerTimeString}";
+
+        if (leaderboardText != null)
+            leaderboardText.text = BuildLeaderboardText(standings);
+
+        if (victoryPanel != null)
+            victoryPanel.SetActive(true);
+
+        UpdateBestTime(finalRaceTime);
+        RefreshPlayerPosition(standings);
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.Phase = RacePhase.Finished;
+
+        Debug.Log($"WINNER: {winnerName}, Player race time: {playerTimeString}");
+
+        if (winner.car != null && winner.car.kind == CarKind.AI)
+            ShowVictoryCamera(winner.car.transform);
+        else if (player != null)
+            ShowVictoryCamera(player.transform);
+
+        StartCoroutine(BackToMainMenuCountdown());
+    }
+
+    private void CacheCheckpoints()
+    {
+        List<CheckpointTarkistus> checkpoints = new List<CheckpointTarkistus>(Object.FindObjectsByType<CheckpointTarkistus>(FindObjectsSortMode.None));
+        checkpoints.RemoveAll(checkpoint => checkpoint == null);
+        checkpoints.Sort((a, b) => a.orderIndex.CompareTo(b.orderIndex));
+        orderedCheckpoints = checkpoints.ToArray();
+    }
+
+    private List<RaceStanding> GetStandings()
+    {
+        CarIdentify[] cars = Object.FindObjectsByType<CarIdentify>(FindObjectsSortMode.None);
+        List<RaceStanding> standings = new List<RaceStanding>(cars.Length);
+
+        foreach (CarIdentify car in cars)
+        {
+            if (car == null || !car.gameObject.activeInHierarchy)
+                continue;
+
+            bool hasFinished = finishTimes.TryGetValue(car, out float finishTime);
+            RaceStanding standing = new RaceStanding
+            {
+                car = car,
+                progress = GetRaceProgress(car),
+                hasFinished = hasFinished,
+                finishTime = hasFinished ? finishTime : 0f
+            };
+
+            standings.Add(standing);
+        }
+
+        standings.Sort(CompareStandings);
+        return standings;
+    }
+
+    private int CompareStandings(RaceStanding a, RaceStanding b)
+    {
+        if (a.hasFinished != b.hasFinished)
+            return a.hasFinished ? -1 : 1;
+
+        if (a.hasFinished)
+            return a.finishTime.CompareTo(b.finishTime);
+
+        int progressComparison = b.progress.CompareTo(a.progress);
+        if (progressComparison != 0)
+            return progressComparison;
+
+        return string.Compare(GetCarDisplayName(a.car), GetCarDisplayName(b.car), System.StringComparison.Ordinal);
+    }
+
+    private float GetRaceProgress(CarIdentify car)
+    {
+        LapCounter lap = car.GetComponent<LapCounter>();
+        int completedLaps = lap != null ? Mathf.Max(0, lap.lapsCompleted) : 0;
+        PelaajanKierrosTarkastus validator = car.GetComponent<PelaajanKierrosTarkastus>();
+
+        if (validator == null || orderedCheckpoints.Length == 0)
+            return completedLaps + 1f / (1f + Vector3.Distance(car.transform.position, transform.position));
+
+        int checkpointCount = Mathf.Min(orderedCheckpoints.Length, validator.TotalCheckpointCount);
+        if (checkpointCount <= 0)
+            return completedLaps;
+
+        int segmentIndex = Mathf.Clamp(validator.SequentialCheckpointCount, 0, checkpointCount);
+        Vector3 segmentStart = segmentIndex == 0
+            ? transform.position
+            : orderedCheckpoints[segmentIndex - 1].transform.position;
+        Vector3 segmentEnd = segmentIndex == checkpointCount
+            ? transform.position
+            : orderedCheckpoints[segmentIndex].transform.position;
+
+        Vector3 segment = segmentEnd - segmentStart;
+        float segmentLengthSquared = segment.sqrMagnitude;
+        float segmentProgress = segmentLengthSquared > 0.001f
+            ? Mathf.Clamp01(Vector3.Dot(car.transform.position - segmentStart, segment) / segmentLengthSquared)
+            : 0f;
+
+        return completedLaps + (segmentIndex + segmentProgress) / (checkpointCount + 1f);
+    }
+
+    private void RefreshPlayerPosition()
+    {
+        RefreshPlayerPosition(GetStandings());
+    }
+
+    private void RefreshPlayerPosition(List<RaceStanding> standings)
+    {
+        if (playerPositionText == null)
+            return;
+
+        RaceStanding playerStanding = null;
+        int playerIndex = -1;
+
+        for (int i = 0; i < standings.Count; i++)
+        {
+            if (standings[i].car != null && standings[i].car.kind == CarKind.Player)
+            {
+                playerStanding = standings[i];
+                playerIndex = i;
+                break;
+            }
+        }
+
+        if (playerStanding == null)
+            return;
+
+        playerPositionText.text = $"POS: {playerIndex + 1}/{standings.Count}";
+    }
+
+    private string BuildLeaderboardText(List<RaceStanding> standings)
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("<size=120%><b>LEADERBOARD</b></size>");
+        builder.AppendLine("<b>POS     CAR                         TIME</b>");
+
+        for (int i = 0; i < standings.Count; i++)
+        {
+            RaceStanding standing = standings[i];
+            string carName = GetCarDisplayName(standing.car);
+            string time = standing.hasFinished
+                ? FormatTime(standing.finishTime)
+                : GetInProgressLabel(standing.car);
+
+            builder.AppendLine($"{i + 1}.      {carName}     {time}");
+        }
+
+        return builder.ToString();
+    }
+
+    private string GetInProgressLabel(CarIdentify car)
+    {
+        LapCounter lap = car != null ? car.GetComponent<LapCounter>() : null;
+        int currentLap = lap != null ? Mathf.Clamp(lap.lapsCompleted + 1, 1, kierrostenMaara) : 1;
+        return $"Lap {currentLap}/{kierrostenMaara}";
+    }
+
+    private void CacheCarDisplayNames()
+    {
+        carDisplayNames.Clear();
+        aiModelNameCounts.Clear();
+
+        CarIdentify[] cars = Object.FindObjectsByType<CarIdentify>(FindObjectsSortMode.None);
+        List<CarIdentify> activeCars = new List<CarIdentify>(cars.Length);
+
+        foreach (CarIdentify car in cars)
+        {
+            if (car != null && car.gameObject.activeInHierarchy)
+                activeCars.Add(car);
+        }
+
+        activeCars.Sort((a, b) => a.GetInstanceID().CompareTo(b.GetInstanceID()));
+
+        foreach (CarIdentify car in activeCars)
+        {
+            if (car.kind == CarKind.Player)
+                carDisplayNames[car] = GetPlayerDisplayName(car);
+        }
+
+        foreach (CarIdentify car in activeCars)
+        {
+            if (car.kind == CarKind.AI)
+                RegisterAIName(car);
+        }
+    }
+
+    private void RegisterAIName(CarIdentify car)
+    {
+        if (car == null || carDisplayNames.ContainsKey(car))
+            return;
+
+        string modelName = GetAIModelName(car);
+        aiModelNameCounts.TryGetValue(modelName, out int currentCount);
+        int number = currentCount + 1;
+        aiModelNameCounts[modelName] = number;
+        carDisplayNames[car] = $"{modelName} {number}";
+    }
+
+    private string GetAIModelName(CarIdentify car)
+    {
+        string modelName = car.gameObject.name;
+        int cloneSuffixIndex = modelName.IndexOf("(Clone)", System.StringComparison.Ordinal);
+
+        if (cloneSuffixIndex >= 0)
+            modelName = modelName.Substring(0, cloneSuffixIndex);
+
+        modelName = modelName.Trim();
+        return string.IsNullOrWhiteSpace(modelName) ? "AI Car" : modelName;
+    }
+
+    private string GetPlayerDisplayName(CarIdentify car)
+    {
+        return string.IsNullOrWhiteSpace(car.displayName) ? "Player" : car.displayName;
+    }
+
+    private string GetCarDisplayName(CarIdentify car)
+    {
+        if (car == null)
+            return "Unknown";
+
+        if (car.kind == CarKind.Player)
+            return GetPlayerDisplayName(car);
+
+        if (!carDisplayNames.TryGetValue(car, out string displayName))
+        {
+            RegisterAIName(car);
+            carDisplayNames.TryGetValue(car, out displayName);
+        }
+
+        return string.IsNullOrWhiteSpace(displayName) ? GetAIModelName(car) + " 1" : displayName;
     }
 
     private void RecordPlayerLapTime(int lapNumber)
     {
-        if (!raceTimerStarted)
-        {
-            raceTimerStarted = true;
-            raceStartTime = Time.time;
-            previousLapTime = 0f;
-        }
-
+        EnsureRaceTimerStarted();
         float totalElapsed = Time.time - raceStartTime;
         float lapTime = totalElapsed - previousLapTime;
         previousLapTime = totalElapsed;
-
         SetLapTextForNumber(lapNumber, lapTime);
     }
 
@@ -205,11 +526,17 @@ public class Tuomari : MonoBehaviour
             target.enabled = visible;
     }
 
+    private void SetRaceHudVisible(bool visible)
+    {
+        if (raceTimeHudText != null)
+            raceTimeHudText.gameObject.SetActive(visible);
+        if (playerPositionText != null)
+            playerPositionText.gameObject.SetActive(visible);
+    }
+
     private string FormatTime(float seconds)
     {
-        if (seconds < 0f)
-            seconds = 0f;
-
+        seconds = Mathf.Max(0f, seconds);
         int minutes = Mathf.FloorToInt(seconds / 60f);
         float remainingSeconds = seconds - minutes * 60f;
         return $"{minutes:00}:{remainingSeconds:00.000}";

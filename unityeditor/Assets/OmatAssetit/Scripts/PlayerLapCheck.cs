@@ -6,22 +6,34 @@ public class PelaajanKierrosTarkastus : MonoBehaviour
 {
     public int checkpointCount = 11;
     public TMP_Text lapsText;
-
     public float missedCheckpointMessageDuration = 2f;
-
     public float missedCheckpointSuppressionAfterLap = 5f;
 
     private bool[] visited;
     private int visitedCount;
-
     private int lastDisplayedLap = 0;
     private int lastDisplayedMaxLap = 3;
     private Coroutine missedCheckpointRoutine;
 
-    void Awake()
+    public int TotalCheckpointCount => visited != null ? visited.Length : Mathf.Max(0, checkpointCount);
+
+    public int SequentialCheckpointCount
+    {
+        get
+        {
+            if (visited == null)
+                return 0;
+
+            int count = 0;
+            while (count < visited.Length && visited[count])
+                count++;
+            return count;
+        }
+    }
+
+    private void Awake()
     {
         ResetLap();
-        //UpdateLapsTextDisplay();
     }
 
     public void UpdateLapsText(int currentLap, int maxLap)
@@ -38,7 +50,7 @@ public class PelaajanKierrosTarkastus : MonoBehaviour
         if (lapsText == null)
             return;
 
-        lapsText.text = $"<mark>Lap: {lastDisplayedLap}/{lastDisplayedMaxLap}</mark>";
+        lapsText.text = $"Lap: {lastDisplayedLap}/{lastDisplayedMaxLap}";
     }
 
     public void ShowMissedCheckpointsMessage()
